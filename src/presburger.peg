@@ -1,0 +1,24 @@
+WHITESPACE = _{ " " | "\t" }
+
+var = { ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
+int = { ("+" | "-")? ~ ASCII_DIGIT+ }
+
+arith_term = { atom ~ ("+" ~ arith_term)* }
+  atom = { var | int }
+
+predicate = { arith_term ~ "<" ~ arith_term |
+              arith_term ~ "<=" ~ arith_term |
+              arith_term ~ ">" ~ arith_term |
+              arith_term ~ ">=" ~ arith_term |
+              arith_term ~ "=" ~ arith_term |
+              arith_term ~ "|" ~ arith_term }
+
+bool_term = { predicate ~ (connective ~ predicate)* }
+  connective = { "/\\" | "\\/" | "==>" | "<=>" }
+
+quantification = { quant ~ var ~ "." ~ formula }
+  quant = { "exists" | "forall" }
+
+formula = { quantification | bool_term }
+
+formula_complete = _{ SOI ~ formula ~ EOI }
