@@ -12,5 +12,9 @@ that outperforms Omega).
 
 ## Progress
 
+  * 2019-11-02 -- switched parser generators to lalrpop which seems better
+    suited to this task. There are unit tests now that verify parsing for a
+    range of presberger expressions.
+
   * 2019-10-23 -- setup Rust skeleton, experimenting with different parser
     generator options

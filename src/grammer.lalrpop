@@ -1,0 +1,89 @@
+use std::str::FromStr;  // copied verbatim into generated parser .rs file
+
+use presburger::ast::{Atom, Pred, Term, Var};
+
+grammar;
+
+////////////////////////////////////////////////////////////
+// Numerical terms
+////////////////////////////////////////////////////////////
+
+/// Non-negative integer literal
+Num: i64 = <s:r"[0-9]+"> => i64::from_str(s).unwrap();
+
+/// valid numerical variable names start with a lowercase letter
+Var: Var = <s:r"[a-z][a-zA-Z0-9]*"> => Var(String::from(s));
+
+/// Atomic term
+AtomicTerm: Term = {
+    <n:Num> => Term::Num(n),
+    <v:Var> => Term::Var(v),
+    "(" <t:Term> ")" => t,
+};
+
+pub Term: Term  = {
+    <a:Term> "+" <b:AtomicTerm> => Term::Add(Box::new(a), Box::new(b)),
+    <t:AtomicTerm> => t,
+}
+
+
+////////////////////////////////////////////////////////////
+// Predicates
+//
+// The grammer is built so that the logical connectives bind in order from
+// highest to lowest precedence:
+//
+// ~, /\, \/, ==>, <=>
+//
+////////////////////////////////////////////////////////////
+
+/// valid logical variable names are uppercase
+LogicalVar: Var = <s:r"[A-Z][A-Z0-9]*"> => Var(String::from(s));
+
+pub Atom: Atom = {
+    "T" => Atom::TruthValue(true),
+    "F" => Atom::TruthValue(false),
+    <v:LogicalVar> => Atom::LogicalVar(v),
+    <t1:Term> "=" <t2:Term> => Atom::Equality(Box::new(t1), Box::new(t2)),
+    <t1:Term> "<" <t2:Term> => Atom::LessThan(Box::new(t1), Box::new(t2)),
+}
+
+pub Pred: Pred = {
+    "exists" <v:Var> "." <p:Pred> => Pred::Exists(v, Box::new(p)),
+    "forall" <v:Var> "." <p:Pred> => Pred::Forall(v, Box::new(p)),
+    <p:L5Pred> => p,
+}
+
+// Associates to the right
+L5Pred: Pred = {
+    <p:L4Pred> "<=>" <q:L5Pred> => Pred::Iff(Box::new(p), Box::new(q)),
+    <p:L4Pred> => p,
+}
+
+// Associates to the right
+L4Pred: Pred = {
+    <p:L3Pred> "==>" <q:L4Pred> => Pred::Impl(Box::new(p), Box::new(q)),
+    <p:L3Pred> => p,
+}
+
+// Associates to the right
+L3Pred: Pred = {
+    <p:L2Pred> "\\/" <q:L3Pred> => Pred::Or(Box::new(p), Box::new(q)),
+    <p:L2Pred> => p,
+}
+
+// Associates to the right
+L2Pred: Pred = {
+    <p:L1Pred> "/\\" <q:L2Pred> => Pred::And(Box::new(p), Box::new(q)),
+    <p:L1Pred> => p,
+}
+
+L1Pred: Pred = {
+    "~" <p:L0Pred> => Pred::Not(Box::new(p)),
+    <p:L0Pred> => p,
+}
+
+L0Pred: Pred = {
+    <a:Atom> => Pred::Atom(Box::new(a)),
+    "(" <p:Pred> ")" => p,
+}
