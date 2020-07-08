@@ -1,22 +1,19 @@
-use presburger::ast::{Term, Var};
+#[macro_use] extern crate lalrpop_util;
+
+use std::io;
+
+use presburger::ast;
+lalrpop_mod!(pub grammer); // generated parser
 
 fn main() {
-    // let mut raw_input = String::new();
-    // println!("Input a Presburger formula:");
-    // io::stdin().read_line(&mut raw_input)
-    //     .expect("bad formula!");
+    let mut raw_input = String::new();
+    println!("Input a Presburger formula:");
+    io::stdin().read_line(&mut raw_input)
+        .expect("input failed!");
 
-    // test bool term
-    // let test_bool_term_input = String::from("1 + 1 < 3  /\\ 0 = 0");
-    // test_parse(&test_bool_term_input[..]);
+    let p1 = grammer::PredParser::new().parse(&raw_input).unwrap();
+    println!("p1: {:?}", p1);
 
-    // test quantification
-    // let test_quant_input = String::from("exists x. x > 0");
-    // test_parse(&test_quant_input[..]);
-
-    let t1 = Term::Num(3);
-    let t2 = Term::Var(Var(String::from("x")));
-    println!("{:?} {:?}", t1, t2);
+    let p2 = ast::reduce(p1);
+    println!("{:?}", p2);
 }
-
-// fn test_parse(_input: &str) { }
