@@ -1,5 +1,7 @@
 # preberger
 
+![Rust](https://github.com/benjaminfjones/presburger/workflows/Rust/badge.svg)
+
 This project will *eventually* be a library for Presburger Arithmetic [1],
 including symbolic manipulation of formulas and a decision procedure for the
 full theory based on quantifies elimination.
