@@ -1,4 +1,4 @@
-# preberger
+# Presberger
 
 ![Rust](https://github.com/benjaminfjones/presburger/workflows/Rust/badge.svg)
 
@@ -14,6 +14,7 @@ that outperforms Omega).
 
 ## Progress
 
+  * 2020-07-07 -- got out the dust mop
   * 2019-11-02 -- switched parser generators to lalrpop which seems better
     suited to this task. There are unit tests now that verify parsing for a
     range of presberger expressions.
