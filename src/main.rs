@@ -2,7 +2,7 @@
 
 use std::io;
 
-use presburger::ast;
+use presburger::{nnf};
 lalrpop_mod!(pub grammer); // generated parser
 
 fn main() {
@@ -14,6 +14,6 @@ fn main() {
     let p1 = grammer::PredParser::new().parse(&raw_input).unwrap();
     println!("p1: {:?}", p1);
 
-    let p2 = ast::reduce(p1);
+    let p2 = nnf::to_nnf(p1);
     println!("{:?}", p2);
 }

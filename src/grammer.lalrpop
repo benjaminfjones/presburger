@@ -45,7 +45,7 @@ pub Atom: Atom = {
     "F" => Atom::TruthValue(false),
     <v:LogicalVar> => Atom::LogicalVar(v),
     <t1:Term> "=" <t2:Term> => Atom::Equality(Box::new(t1), Box::new(t2)),
-    <t1:Term> "<" <t2:Term> => Atom::LessThan(Box::new(t1), Box::new(t2)),
+    <t1:Term> "<=" <t2:Term> => Atom::LessEq(Box::new(t1), Box::new(t2)),
 }
 
 pub Pred: Pred = {

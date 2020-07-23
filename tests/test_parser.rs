@@ -54,8 +54,8 @@ mod test_parser {
             "T",
             "F",
             "x+1 = y",
-            "x < y + 1",
-            "y + (x + 1) + z < 0",
+            "x <= y + 1",
+            "y + (x + 1) + z <= 0",
         ];
         for c in cases {
             assert!(grammer::AtomParser::new().parse(c).is_ok(), "case: {}", c);
@@ -74,15 +74,14 @@ mod test_parser {
             "P \\/ ~P",                  // Law of excluded middle
             "~(P \\/ Q) <=> ~P /\\ ~Q",  // DeMorgan1
             "((P ==> Q) ==> P) ==> P",   // Pierce's Law
-            "forall y. exists x. x = y \\/ x < y",
-            "forall y. x < y ==> x < y + 1",
-            "(exists x. 1 < x) /\\ (forall y. 0 < y /\\ 0 = y)",
+            "forall y. exists x. x = y \\/ x <= y",
+            "forall y. x <= y ==> x <= y + 1",
+            "(exists x. 1 <= x) /\\ (forall y. 0 <= y /\\ 0 = y)",
         ];
         for c in cases {
             assert!(grammer::PredParser::new().parse(c).is_ok(), "case: {}", c);
         }
         // negative tests
         assert!(grammer::PredParser::new().parse("5 ==> x").is_err());
-
     }
 }
