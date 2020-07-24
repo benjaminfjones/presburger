@@ -33,7 +33,42 @@ pub enum Pred {
     Atom(Box<Atom>),
 }
 
-// Implement syntactic equality for Pred
+/// Implement smart constructors
+impl Pred {
+    pub fn not(p: Self) -> Self {
+        Pred::Not(Box::new(p))
+    }
+
+    pub fn and(p: Self, q: Self) -> Self {
+        Pred::And(Box::new(p), Box::new(q))
+    }
+
+    pub fn or(p: Self, q: Self) -> Self {
+        Pred::Or(Box::new(p), Box::new(q))
+    }
+
+    pub fn implies(p: Self, q: Self) -> Self {
+        Pred::Impl(Box::new(p), Box::new(q))
+    }
+
+    pub fn iff(p: Self, q: Self) -> Self {
+        Pred::Iff(Box::new(p), Box::new(q))
+    }
+
+    pub fn exists(v: Var, p: Self) -> Self {
+        Pred::Exists(v, Box::new(p))
+    }
+
+    pub fn forall(v: Var, p: Self) -> Self {
+        Pred::Forall(v, Box::new(p))
+    }
+
+    pub fn atom(a: Atom) -> Self {
+        Pred::Atom(Box::new(a))
+    }
+}
+
+/// Implement syntactic equality for Pred
 impl PartialEq for Pred {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -66,6 +101,25 @@ pub enum Atom {
     // TODO finish rest of atoms
 }
 
+/// Implement smart constructors
+impl Atom {
+    pub fn truth(val: bool) -> Self {
+        Atom::TruthValue(val)
+    }
+
+    pub fn var(name: &str) -> Self {
+        Atom::LogicalVar(Var::new(name))
+    }
+
+    pub fn equality(t1: Term, t2: Term) -> Self {
+        Atom::Equality(Box::new(t1), Box::new(t2))
+    }
+
+    pub fn less_eq(t1: Term, t2: Term) -> Self {
+        Atom::LessEq(Box::new(t1), Box::new(t2))
+    }
+}
+
 /// Implement syntactic equality for Atoms
 impl PartialEq for Atom {
     fn eq(&self, other: &Self) -> bool {
@@ -91,6 +145,21 @@ pub enum Term {
     Add(Box<Term>, Box<Term>),
 }
 
+/// Implement smart constructors
+impl Term {
+    pub fn num(x: i64) -> Self {
+        Term::Num(x)
+    }
+
+    pub fn var(name: &str) -> Self {
+        Term::Var(Var::new(name))
+    }
+
+    pub fn add(t1: Self, t2: Self) -> Self {
+        Term::Add(Box::new(t1), Box::new(t2))
+    }
+}
+
 /// Implement syntactic equality on Terms
 impl PartialEq for Term {
     fn eq(&self, other: &Self) -> bool {
@@ -108,42 +177,49 @@ impl Eq for Term {}
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Var(pub String);
 
+/// Implement smart constructor
+impl Var {
+    pub fn new(name: &str) -> Self {
+        Var(name.to_string())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
     fn test_var_eq() {
-        let v1 = Var("x".to_string());
-        let v2 = Var("x".to_string());
+        let v1 = Var::new("x");
+        let v2 = Var::new("x");
         assert_eq!(v1, v2);
     }
 
     #[test]
     fn test_var_neq() {
-        let v1 = Var("x".to_string());
-        let v2 = Var("y".to_string());
+        let v1 = Var::new("x");
+        let v2 = Var::new("y");
         assert!(v1 != v2);
 
-        let v3 = Var("X".to_string());
+        let v3 = Var::new("X");
         assert!(v1 != v3);
     }
 
     #[test]
     fn term_eq() {
-        let t0 = Term::Num(0);
-        let t1 = Term::Num(1);
-        let t2 = Term::Num(2);
+        let t0 = Term::num(0);
+        let t1 = Term::num(1);
+        let t2 = Term::num(2);
 
         assert_eq!(t0, t0);
         assert!(t0 != t1);
         assert!(t0 != t2);
 
-        let t4 = Term::Var(Var("x".to_string()));
+        let t4 = Term::var("x");  // x
         assert_eq!(t4, t4);
         assert!(t0 != t4);
 
-        let t5 = Term::Add(Box::new(Term::Var(Var("x".to_string()))), Box::new(Term::Num(1)));
+        let t5 = Term::add(Term::var("x"), Term::num(1));  // x + 1
         assert_eq!(t5, t5);
         assert!(t0 != t5);
         assert!(t4 != t5);
@@ -151,11 +227,11 @@ mod test {
 
     #[test]
     fn atom_eq() {
-        let a1 = Atom::TruthValue(true);
-        let a2 = Atom::TruthValue(false);
-        let a3 = Atom::LogicalVar(Var("P".to_string()));
-        let a4 = Atom::Equality(Box::new(Term::Num(0)), Box::new(Term::Num(0)));
-        let a5 = Atom::Equality(Box::new(Term::Num(0)), Box::new(Term::Num(0)));  // intentionally same as a4
+        let a1 = Atom::truth(true);
+        let a2 = Atom::truth(false);
+        let a3 = Atom::var("P");
+        let a4 = Atom::equality(Term::num(0), Term::num(0));
+        let a5 = Atom::equality(Term::num(0), Term::num(0));  // intentionally same as a4
 
         assert_eq!(a1, a1);
         assert_eq!(a2, a2);
@@ -171,13 +247,13 @@ mod test {
     #[test]
     fn pred_eq() {
         // Note: sub-predicates can't be shared since the Box takes ownership.
-        let p1 = Pred::Atom(Box::new(Atom::TruthValue(true)));
-        let p2 = Pred::Atom(Box::new(Atom::LogicalVar(Var("P".to_string()))));  // P
-        let p2_ = Pred::Atom(Box::new(Atom::LogicalVar(Var("P".to_string()))));  // also P
-        let p3 = Pred::Not(Box::new(p1.clone()));
-        let p4 = Pred::Not(Box::new(p2.clone()));  // not P
-        let p4_ = Pred::Not(Box::new(p2_.clone()));  // also not P
-        let p5 = Pred::And(Box::new(p3.clone()), Box::new(p4.clone()));  // not True AND not P
+        let p1 = Pred::atom(Atom::truth(true));
+        let p2 = Pred::atom(Atom::var("P"));
+        let p2_ = Pred::atom(Atom::var("P"));
+        let p3 = Pred::not(p1.clone());
+        let p4 = Pred::not(p2.clone());  // not P
+        let p4_ = Pred::not(p2_.clone());  // also not P
+        let p5 = Pred::and(p3.clone(), p4.clone());  // not True AND not P
 
         assert_eq!(p1, p1);
         assert_eq!(p2, p2);
