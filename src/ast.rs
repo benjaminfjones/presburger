@@ -13,6 +13,8 @@
 /// The AST is produced by the parser/grammer defined in `grammer.lalrpop`.
 ///
 
+use std::fmt;
+
 #[derive(Clone, Debug)]
 pub enum Pred {
     /// Negation
@@ -68,6 +70,20 @@ impl Pred {
     }
 }
 
+impl fmt::Display for Pred {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Pred::Not(x) => write!(f, "-{}", x),
+            Pred::And(p, q) => write!(f, "({} /\\ {})", *p, *q),
+            Pred::Or(p, q) => write!(f, "({} \\/ {})", *p, *q),
+            Pred::Impl(p, q) => write!(f, "({} ==> {})", *p, *q),
+            Pred::Iff(p, q) => write!(f, "({} <==> {})", *p, *q),
+            Pred::Exists(v, p) => write!(f, "(∃{}. {})", v, *p),
+            Pred::Forall(v, p) => write!(f, "(∀{}. {})", v, *p),
+            Pred::Atom(a) => write!(f, "({})", *a),
+        }
+    }
+}
 /// Implement syntactic equality for Pred
 impl PartialEq for Pred {
     fn eq(&self, other: &Self) -> bool {
@@ -120,6 +136,16 @@ impl Atom {
     }
 }
 
+impl fmt::Display for Atom {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Atom::TruthValue(x) => write!(f, "{}", x),
+            Atom::LogicalVar(x) => write!(f, "{}", x),
+            Atom::Equality(a, b) => write!(f, "{} == {}", *a, *b),
+            Atom::LessEq(a, b) => write!(f, "{} <= {}", *a, *b),
+        }
+    }
+}
 /// Implement syntactic equality for Atoms
 impl PartialEq for Atom {
     fn eq(&self, other: &Self) -> bool {
@@ -160,6 +186,15 @@ impl Term {
     }
 }
 
+impl fmt::Display for Term {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Term::Num(x) => write!(f, "{}", x),
+            Term::Var(x) => write!(f, "{}", x),
+            Term::Add(a, b) => write!(f, "({} + {})", *a, *b),
+        }
+    }
+}
 /// Implement syntactic equality on Terms
 impl PartialEq for Term {
     fn eq(&self, other: &Self) -> bool {
@@ -181,6 +216,11 @@ pub struct Var(pub String);
 impl Var {
     pub fn new(name: &str) -> Self {
         Var(name.to_string())
+    }
+}
+impl fmt::Display for Var {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

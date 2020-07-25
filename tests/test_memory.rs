@@ -63,9 +63,10 @@ fn random_var_name(rng: ThreadRng) -> String {
 
 #[test]
 fn make_random_pred() {
-    let p = random_pred(5);
-    println!("{:?}", p);
-    assert_eq!(p, p);
+    for size in 0..=5 {
+        let p = random_pred(size);
+        assert_eq!(p, p);
+    }
 }
 
 // TODO: make a bunch of large random predicates, convert to nnf, and profile memory usage
