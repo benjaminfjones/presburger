@@ -1,6 +1,6 @@
 use std::str::FromStr;  // copied verbatim into generated parser .rs file
 
-use presburger::ast::{Atom, Pred, Term, Var};
+use presburger::ast::{Atom, Formula, Term, Var};
 
 grammar;
 
@@ -28,7 +28,7 @@ pub Term: Term  = {
 
 
 ////////////////////////////////////////////////////////////
-// Predicates
+// Formulaicates
 //
 // The grammer is built so that the logical connectives bind in order from
 // highest to lowest precedence:
@@ -48,42 +48,42 @@ pub Atom: Atom = {
     <t1:Term> "<=" <t2:Term> => Atom::LessEq(Box::new(t1), Box::new(t2)),
 }
 
-pub Pred: Pred = {
-    "exists" <v:Var> "." <p:Pred> => Pred::Exists(v, Box::new(p)),
-    "forall" <v:Var> "." <p:Pred> => Pred::Forall(v, Box::new(p)),
-    <p:L5Pred> => p,
+pub Formula: Formula = {
+    "exists" <v:Var> "." <p:Formula> => Formula::Exists(v, Box::new(p)),
+    "forall" <v:Var> "." <p:Formula> => Formula::Forall(v, Box::new(p)),
+    <p:L5Formula> => p,
 }
 
 // Associates to the right
-L5Pred: Pred = {
-    <p:L4Pred> "<=>" <q:L5Pred> => Pred::Iff(Box::new(p), Box::new(q)),
-    <p:L4Pred> => p,
+L5Formula: Formula = {
+    <p:L4Formula> "<=>" <q:L5Formula> => Formula::Iff(Box::new(p), Box::new(q)),
+    <p:L4Formula> => p,
 }
 
 // Associates to the right
-L4Pred: Pred = {
-    <p:L3Pred> "==>" <q:L4Pred> => Pred::Impl(Box::new(p), Box::new(q)),
-    <p:L3Pred> => p,
+L4Formula: Formula = {
+    <p:L3Formula> "==>" <q:L4Formula> => Formula::Impl(Box::new(p), Box::new(q)),
+    <p:L3Formula> => p,
 }
 
 // Associates to the right
-L3Pred: Pred = {
-    <p:L2Pred> "\\/" <q:L3Pred> => Pred::Or(Box::new(p), Box::new(q)),
-    <p:L2Pred> => p,
+L3Formula: Formula = {
+    <p:L2Formula> "\\/" <q:L3Formula> => Formula::Or(Box::new(p), Box::new(q)),
+    <p:L2Formula> => p,
 }
 
 // Associates to the right
-L2Pred: Pred = {
-    <p:L1Pred> "/\\" <q:L2Pred> => Pred::And(Box::new(p), Box::new(q)),
-    <p:L1Pred> => p,
+L2Formula: Formula = {
+    <p:L1Formula> "/\\" <q:L2Formula> => Formula::And(Box::new(p), Box::new(q)),
+    <p:L1Formula> => p,
 }
 
-L1Pred: Pred = {
-    "~" <p:L0Pred> => Pred::Not(Box::new(p)),
-    <p:L0Pred> => p,
+L1Formula: Formula = {
+    "~" <p:L0Formula> => Formula::Not(Box::new(p)),
+    <p:L0Formula> => p,
 }
 
-L0Pred: Pred = {
-    <a:Atom> => Pred::Atom(Box::new(a)),
-    "(" <p:Pred> ")" => p,
+L0Formula: Formula = {
+    <a:Atom> => Formula::Atom(Box::new(a)),
+    "(" <p:Formula> ")" => p,
 }

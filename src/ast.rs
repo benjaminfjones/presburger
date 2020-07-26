@@ -1,107 +1,106 @@
 /// AST module
 ///
-/// This module defines the naive AST for Presburger expressions. These
-/// expressions are part of the 1st order logic Th(0, 1, +, <).
+/// This module defines the naive AST for Presburger formulas. These
+/// formulas are part of the 1st order logic Th(0, 1, +, <=, ==).
 ///
 /// For example,
 ///
 /// 1) forall y. y < y + 1
-/// 2) 0 <= x /\ x < 10
-/// 3) forall y. (exists x. x < y ==> x + 1 <= y)
+/// 2) 0 <= x /\ x <= 10
+/// 3) forall y. (exists x. x <= y ==> x + 1 <= y)
 /// 4) ((P ==> Q) ==> P) ==> Q
 ///
 /// The AST is produced by the parser/grammer defined in `grammer.lalrpop`.
 ///
-
 use std::fmt;
 
 #[derive(Clone, Debug)]
-pub enum Pred {
+pub enum Formula {
     /// Negation
-    Not(Box<Pred>),
+    Not(Box<Formula>),
     /// AND
-    And(Box<Pred>, Box<Pred>),
+    And(Box<Formula>, Box<Formula>),
     /// Inclusive OR
-    Or(Box<Pred>, Box<Pred>),
+    Or(Box<Formula>, Box<Formula>),
     /// Implication
-    Impl(Box<Pred>, Box<Pred>),
+    Impl(Box<Formula>, Box<Formula>),
     /// If and only if
-    Iff(Box<Pred>, Box<Pred>),
+    Iff(Box<Formula>, Box<Formula>),
     /// exists y. p(y)
-    Exists(Var, Box<Pred>),
+    Exists(Var, Box<Formula>),
     /// forall x. p(x)
-    Forall(Var, Box<Pred>),
+    Forall(Var, Box<Formula>),
     /// atomic predicates
     Atom(Box<Atom>),
 }
 
 /// Implement smart constructors
-impl Pred {
-    pub fn not(p: Self) -> Self {
-        Pred::Not(Box::new(p))
+impl Formula {
+    /// Formula not
+    pub fn fnot(p: Self) -> Self {
+        Formula::Not(Box::new(p))
     }
 
     pub fn and(p: Self, q: Self) -> Self {
-        Pred::And(Box::new(p), Box::new(q))
+        Formula::And(Box::new(p), Box::new(q))
     }
 
     pub fn or(p: Self, q: Self) -> Self {
-        Pred::Or(Box::new(p), Box::new(q))
+        Formula::Or(Box::new(p), Box::new(q))
     }
 
     pub fn implies(p: Self, q: Self) -> Self {
-        Pred::Impl(Box::new(p), Box::new(q))
+        Formula::Impl(Box::new(p), Box::new(q))
     }
 
     pub fn iff(p: Self, q: Self) -> Self {
-        Pred::Iff(Box::new(p), Box::new(q))
+        Formula::Iff(Box::new(p), Box::new(q))
     }
 
     pub fn exists(v: Var, p: Self) -> Self {
-        Pred::Exists(v, Box::new(p))
+        Formula::Exists(v, Box::new(p))
     }
 
     pub fn forall(v: Var, p: Self) -> Self {
-        Pred::Forall(v, Box::new(p))
+        Formula::Forall(v, Box::new(p))
     }
 
     pub fn atom(a: Atom) -> Self {
-        Pred::Atom(Box::new(a))
+        Formula::Atom(Box::new(a))
     }
 }
 
-impl fmt::Display for Pred {
+impl fmt::Display for Formula {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Pred::Not(x) => write!(f, "-{}", x),
-            Pred::And(p, q) => write!(f, "({} /\\ {})", *p, *q),
-            Pred::Or(p, q) => write!(f, "({} \\/ {})", *p, *q),
-            Pred::Impl(p, q) => write!(f, "({} ==> {})", *p, *q),
-            Pred::Iff(p, q) => write!(f, "({} <==> {})", *p, *q),
-            Pred::Exists(v, p) => write!(f, "(∃{}. {})", v, *p),
-            Pred::Forall(v, p) => write!(f, "(∀{}. {})", v, *p),
-            Pred::Atom(a) => write!(f, "({})", *a),
+            Formula::Not(x) => write!(f, "~{}", x),
+            Formula::And(p, q) => write!(f, "({} /\\ {})", *p, *q),
+            Formula::Or(p, q) => write!(f, "({} \\/ {})", *p, *q),
+            Formula::Impl(p, q) => write!(f, "({} ==> {})", *p, *q),
+            Formula::Iff(p, q) => write!(f, "({} <==> {})", *p, *q),
+            Formula::Exists(v, p) => write!(f, "(∃{}. {})", v, *p),
+            Formula::Forall(v, p) => write!(f, "(∀{}. {})", v, *p),
+            Formula::Atom(a) => write!(f, "({})", *a),
         }
     }
 }
-/// Implement syntactic equality for Pred
-impl PartialEq for Pred {
+/// Implement syntactic equality for Formula
+impl PartialEq for Formula {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Pred::Not(p1), Pred::Not(p2)) => *p1 == *p2,
-            (Pred::And(p1, q1), Pred::And(p2, q2)) => *p1 == *p2 && *q1 == *q2,
-            (Pred::Or(p1, q1), Pred::Or(p2, q2)) => *p1 == *p2 && *q1 == *q2,
-            (Pred::Impl(p1, q1), Pred::Impl(p2, q2)) => *p1 == *p2 && *q1 == *q2,
-            (Pred::Iff(p1, q1), Pred::Iff(p2, q2)) => *p1 == *p2 && *q1 == *q2,
-            (Pred::Exists(v1, p1), Pred::Exists(v2, p2)) => v1 == v2 && *p1 == *p2,
-            (Pred::Forall(v1, p1), Pred::Forall(v2, p2)) => v1 == v2 && *p1 == *p2,
-            (Pred::Atom(a1), Pred::Atom(a2)) => *a1 == *a2,
+            (Formula::Not(p1), Formula::Not(p2)) => *p1 == *p2,
+            (Formula::And(p1, q1), Formula::And(p2, q2)) => *p1 == *p2 && *q1 == *q2,
+            (Formula::Or(p1, q1), Formula::Or(p2, q2)) => *p1 == *p2 && *q1 == *q2,
+            (Formula::Impl(p1, q1), Formula::Impl(p2, q2)) => *p1 == *p2 && *q1 == *q2,
+            (Formula::Iff(p1, q1), Formula::Iff(p2, q2)) => *p1 == *p2 && *q1 == *q2,
+            (Formula::Exists(v1, p1), Formula::Exists(v2, p2)) => v1 == v2 && *p1 == *p2,
+            (Formula::Forall(v1, p1), Formula::Forall(v2, p2)) => v1 == v2 && *p1 == *p2,
+            (Formula::Atom(a1), Formula::Atom(a2)) => *a1 == *a2,
             _ => false,
         }
     }
-
 }
-impl Eq for Pred { }
+impl Eq for Formula {}
 
 /// `Atom` represents an atomic predicate (with respect to the logical connectives)
 #[derive(Clone, Debug)]
@@ -152,13 +151,17 @@ impl PartialEq for Atom {
         match (self, other) {
             (Atom::TruthValue(b1), Atom::TruthValue(b2)) => b1 == b2,
             (Atom::LogicalVar(v1), Atom::LogicalVar(v2)) => v1 == v2,
-            (Atom::Equality(lhs1, rhs1), Atom::Equality(lhs2, rhs2)) => *lhs1 == *lhs2 && *rhs1 == *rhs2,
-            (Atom::LessEq(lhs1, rhs1), Atom::LessEq(lhs2, rhs2)) => *lhs1 == *lhs2 && *rhs1 == *rhs2,
+            (Atom::Equality(lhs1, rhs1), Atom::Equality(lhs2, rhs2)) => {
+                *lhs1 == *lhs2 && *rhs1 == *rhs2
+            }
+            (Atom::LessEq(lhs1, rhs1), Atom::LessEq(lhs2, rhs2)) => {
+                *lhs1 == *lhs2 && *rhs1 == *rhs2
+            }
             _ => false,
         }
     }
 }
-impl Eq for Atom { }
+impl Eq for Atom {}
 
 /// `Term` Represents a base numerical term
 #[derive(Clone, Debug)]
@@ -181,7 +184,8 @@ impl Term {
         Term::Var(Var::new(name))
     }
 
-    pub fn add(t1: Self, t2: Self) -> Self {
+    /// Term add
+    pub fn tadd(t1: Self, t2: Self) -> Self {
         Term::Add(Box::new(t1), Box::new(t2))
     }
 }
@@ -255,11 +259,11 @@ mod test {
         assert!(t0 != t1);
         assert!(t0 != t2);
 
-        let t4 = Term::var("x");  // x
+        let t4 = Term::var("x"); // x
         assert_eq!(t4, t4);
         assert!(t0 != t4);
 
-        let t5 = Term::add(Term::var("x"), Term::num(1));  // x + 1
+        let t5 = Term::tadd(Term::var("x"), Term::num(1)); // x + 1
         assert_eq!(t5, t5);
         assert!(t0 != t5);
         assert!(t4 != t5);
@@ -271,7 +275,7 @@ mod test {
         let a2 = Atom::truth(false);
         let a3 = Atom::var("P");
         let a4 = Atom::equality(Term::num(0), Term::num(0));
-        let a5 = Atom::equality(Term::num(0), Term::num(0));  // intentionally same as a4
+        let a5 = Atom::equality(Term::num(0), Term::num(0)); // intentionally same as a4
 
         assert_eq!(a1, a1);
         assert_eq!(a2, a2);
@@ -287,13 +291,13 @@ mod test {
     #[test]
     fn pred_eq() {
         // Note: sub-predicates can't be shared since the Box takes ownership.
-        let p1 = Pred::atom(Atom::truth(true));
-        let p2 = Pred::atom(Atom::var("P"));
-        let p2_ = Pred::atom(Atom::var("P"));
-        let p3 = Pred::not(p1.clone());
-        let p4 = Pred::not(p2.clone());  // not P
-        let p4_ = Pred::not(p2_.clone());  // also not P
-        let p5 = Pred::and(p3.clone(), p4.clone());  // not True AND not P
+        let p1 = Formula::atom(Atom::truth(true));
+        let p2 = Formula::atom(Atom::var("P"));
+        let p2_ = Formula::atom(Atom::var("P"));
+        let p3 = Formula::fnot(p1.clone());
+        let p4 = Formula::fnot(p2.clone()); // not P
+        let p4_ = Formula::fnot(p2_.clone()); // also not P
+        let p5 = Formula::and(p3.clone(), p4.clone()); // not True AND not P
 
         assert_eq!(p1, p1);
         assert_eq!(p2, p2);
