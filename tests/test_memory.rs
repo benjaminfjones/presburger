@@ -1,8 +1,6 @@
 use presburger::ast;
+use presburger::ast_strategy::{arb_atom, arb_formula, arb_term};
 use proptest::prelude::*;
-
-mod ast_strategy;
-use ast_strategy::{arb_atom, arb_formula, arb_term};
 
 // Make a bunch of large random formulaicates, convert to nnf, and profile memory usage
 proptest! {

@@ -1,4 +1,4 @@
-use presburger::ast;
+use crate::ast;
 use proptest::prelude::*;
 
 pub fn arb_logic_var() -> impl Strategy<Value = ast::Var> {

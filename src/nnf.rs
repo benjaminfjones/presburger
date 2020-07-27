@@ -1,5 +1,8 @@
 /// Implement a reduction of the Presburger AST to Negation Normal Form (NNF).
 use crate::ast::Formula;
+#[allow(unused_imports)]
+use crate::ast_strategy;
+use proptest::prelude::*;
 
 /// Convert a Formula to NNF.
 ///
@@ -16,16 +19,19 @@ pub fn to_nnf(p: Formula) -> Formula {
                 // double negation: ~(~Q) -> to_nnf(Q)
                 Formula::Not(bq) => to_nnf(*bq),
                 // DeMorgan: ~(Q1 /\\ Q2) -> to_nnf(~Q1) \\/ to_nnf(~Q2)
-                Formula::And(bq1, bq2) => Formula::Or(
-                    Box::new(to_nnf(Formula::Not(bq1))),
-                    Box::new(to_nnf(Formula::Not(bq2))),
-                ),
+                Formula::And(bq1, bq2) => {
+                    Formula::or(to_nnf(Formula::fnot(*bq1)), to_nnf(Formula::fnot(*bq2)))
+                }
                 // DeMorgan: ~(Q1 /\\ Q2) -> to_nnf(~Q1) \\/ to_nnf(~Q2)
-                Formula::Or(bq1, bq2) => Formula::And(
-                    Box::new(to_nnf(Formula::Not(bq1))),
-                    Box::new(to_nnf(Formula::Not(bq2))),
-                ),
-                q => Formula::Not(Box::new(to_nnf(q))),
+                Formula::Or(bq1, bq2) => {
+                    Formula::and(to_nnf(Formula::fnot(*bq1)), to_nnf(Formula::fnot(*bq2)))
+                }
+                // ~∃x. P(x) <==> ∀x. ~P(x)
+                Formula::Exists(v, bp) => Formula::forall(v, to_nnf(Formula::fnot(*bp))),
+                // ~∀x. P(x) <==> ∃x. ~P(x)
+                Formula::Forall(v, bp) => Formula::exists(v, to_nnf(Formula::fnot(*bp))),
+                a @ Formula::Atom(_) => Formula::fnot(a),
+                _ => panic!("unpexpected Impl or Iff in formula after remove_impl"),
             }
         }
 
@@ -50,21 +56,21 @@ pub fn to_nnf(p: Formula) -> Formula {
 /// Verify that a formula is in NNF.
 ///
 /// Used for testing `to_nnf`.
-pub fn verify_nnf(p: Formula) -> bool {
+pub fn verify_nnf(p: &Formula) -> bool {
     match p {
         // NOT can only appear applied to an Atom
-        Formula::Not(bp) => match *bp {
+        Formula::Not(bp) => match **bp {
             Formula::Atom(_) => true,
             _ => false,
         },
-        Formula::And(bp, bq) => verify_nnf(*bp) && verify_nnf(*bq),
-        Formula::Or(bp, bq) => verify_nnf(*bp) && verify_nnf(*bq),
+        Formula::And(bp, bq) => verify_nnf(&*bp) && verify_nnf(&*bq),
+        Formula::Or(bp, bq) => verify_nnf(&*bp) && verify_nnf(&*bq),
         // Impl cannot appear
         Formula::Impl(_, _) => false,
         // Iff cannot appear
         Formula::Iff(_, _) => false,
-        Formula::Exists(_, bp) => verify_nnf(*bp),
-        Formula::Forall(_, bp) => verify_nnf(*bp),
+        Formula::Exists(_, bp) => verify_nnf(&*bp),
+        Formula::Forall(_, bp) => verify_nnf(&*bp),
         Formula::Atom(_) => true,
     }
 }
@@ -72,23 +78,23 @@ pub fn verify_nnf(p: Formula) -> bool {
 /// Recursively remove ==> and <==> from the formula, replacing them by equivalent logic in terms of NOT, AND, and OR.
 pub fn remove_impl(p: Formula) -> Formula {
     match p {
-        Formula::Not(bp) => Formula::Not(Box::new(remove_impl(*bp))),
+        Formula::Not(bp) => Formula::fnot(remove_impl(*bp)),
         Formula::And(bp, bq) => {
             let p = remove_impl(*bp);
             let q = remove_impl(*bq);
-            Formula::And(Box::new(p), Box::new(q))
+            Formula::and(p, q)
         }
 
         Formula::Or(bp, bq) => {
             let p = remove_impl(*bp);
             let q = remove_impl(*bq);
-            Formula::Or(Box::new(p), Box::new(q))
+            Formula::or(p, q)
         }
 
         Formula::Impl(bp, bq) => {
             let p = remove_impl(*bp);
             let q = remove_impl(*bq);
-            Formula::Or(Box::new(Formula::Not(Box::new(p))), Box::new(q))
+            Formula::or(Formula::fnot(p), q)
         }
 
         Formula::Iff(bp, bq) => {
@@ -96,19 +102,19 @@ pub fn remove_impl(p: Formula) -> Formula {
             let q = remove_impl(*bq);
             let p2 = p.clone();
             let q2 = q.clone();
-            let left = Formula::Or(Box::new(Formula::Not(Box::new(p))), Box::new(q));
-            let right = Formula::Or(Box::new(Formula::Not(Box::new(q2))), Box::new(p2));
-            Formula::And(Box::new(left), Box::new(right))
+            let left = Formula::or(Formula::fnot(p), q);
+            let right = Formula::or(Formula::fnot(q2), p2);
+            Formula::and(left, right)
         }
 
         Formula::Exists(v, bp) => {
             let p = remove_impl(*bp);
-            Formula::Exists(v, Box::new(p))
+            Formula::exists(v, p)
         }
 
         Formula::Forall(v, bp) => {
             let p = remove_impl(*bp);
-            Formula::Forall(v, Box::new(p))
+            Formula::forall(v, p)
         }
 
         p @ Formula::Atom(_) => p,
@@ -128,7 +134,7 @@ mod test {
 
         // to_nnf(~(~P)) == P
         assert_eq!(n, pvar);
-        assert!(verify_nnf(n));
+        assert!(verify_nnf(&n));
     }
 
     #[test]
@@ -141,8 +147,8 @@ mod test {
 
         // to_nnf(~(P /\\ Q)) equals ~P \\/ ~Q
         assert_eq!(n, expected);
-        assert!(verify_nnf(n));
-        assert!(verify_nnf(expected));
+        assert!(verify_nnf(&n));
+        assert!(verify_nnf(&expected));
     }
 
     #[test]
@@ -155,7 +161,36 @@ mod test {
 
         // to_nnf(P ==> Q) equals ~P \\/ Q
         assert_eq!(n, expected);
-        assert!(verify_nnf(n));
-        assert!(verify_nnf(expected));
+        assert!(verify_nnf(&n));
+        assert!(verify_nnf(&expected));
+
+        // regression test generated by proptest
+        //
+        // ((∃A. false) ==> false) is equivalent to ...
+        // (~(∃A. false) \\/ false) ...
+        // (∀A. ~false) \\/ false)
+        let formula = Formula::implies(
+            Formula::exists(Var::new("A"), Formula::atom(Atom::truth(false))),
+            Formula::atom(Atom::truth(false)),
+        );
+        let n = to_nnf(formula);
+        let expected = Formula::or(
+            Formula::forall(
+                Var::new("A"),
+                Formula::fnot(Formula::atom(Atom::truth(false))),
+            ),
+            Formula::atom(Atom::truth(false)),
+        );
+        assert!(verify_nnf(&n));
+        assert_eq!(n, expected);
+    }
+}
+
+proptest! {
+    /// Generate random formulas, convert to nnf, and verify they are in NNF
+    #[test]
+    fn nnf_arb_formula(formula in ast_strategy::arb_formula(6, 20)) {
+        let n = to_nnf(formula);
+        assert!(verify_nnf(&n));
     }
 }
