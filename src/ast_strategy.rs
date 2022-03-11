@@ -13,7 +13,8 @@ pub fn arb_term(max_depth: u32, max_size: u32) -> impl Strategy<Value = ast::Ter
         any::<i64>().prop_map(ast::Term::num),
     ];
     leaf.prop_recursive(max_depth, max_size, max_size, |inner| {
-        prop_oneof![(inner.clone(), inner.clone()).prop_map(|(t1, t2)| ast::Term::tadd(t1, t2)),]
+        let inner_copy = inner.clone();
+        prop_oneof![(inner, inner_copy).prop_map(|(t1, t2)| ast::Term::tadd(t1, t2)),]
     })
 }
 
@@ -40,7 +41,7 @@ pub fn arb_formula(max_depth: u32, max_size: u32) -> impl Strategy<Value = ast::
             (inner.clone(), inner.clone()).prop_map(|(p, q)| ast::Formula::implies(p, q)),
             (inner.clone(), inner.clone()).prop_map(|(p, q)| ast::Formula::iff(p, q)),
             (arb_logic_var(), inner.clone()).prop_map(|(v, p)| ast::Formula::exists(v, p)),
-            (arb_logic_var(), inner.clone()).prop_map(|(v, p)| ast::Formula::forall(v, p)),
+            (arb_logic_var(), inner).prop_map(|(v, p)| ast::Formula::forall(v, p)),
         ]
     })
 }

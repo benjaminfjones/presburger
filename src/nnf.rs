@@ -59,10 +59,7 @@ pub fn to_nnf(p: Formula) -> Formula {
 pub fn verify_nnf(p: &Formula) -> bool {
     match p {
         // NOT can only appear applied to an Atom
-        Formula::Not(bp) => match **bp {
-            Formula::Atom(_) => true,
-            _ => false,
-        },
+        Formula::Not(bp) => matches!(**bp, Formula::Atom(_)),
         Formula::And(bp, bq) => verify_nnf(&*bp) && verify_nnf(&*bq),
         Formula::Or(bp, bq) => verify_nnf(&*bp) && verify_nnf(&*bq),
         // Impl cannot appear
