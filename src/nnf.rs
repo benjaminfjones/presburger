@@ -49,7 +49,7 @@ pub fn to_nnf(p: Formula) -> Formula {
 
         // base case
         aa @ Formula::Atom(_) => aa,
-        p => panic!(format!("unexpected Formula: {:?}", p)),
+        p => panic!("unexpected Formula: {:?}", p),
     }
 }
 
