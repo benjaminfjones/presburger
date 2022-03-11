@@ -8,8 +8,8 @@ edition = "2021"
 lalrpop = "^0.20"
 lalrpop-util = "^0.20"
 proptest = "^1.1"
-rand = "^0.8"
-regex = "^1.7"
+# TODO: eventually depend on rug for integers
+# rug = "1.21.0"
 
 [build-dependencies]
 lalrpop = "^0.20"
