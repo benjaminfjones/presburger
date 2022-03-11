@@ -4,6 +4,7 @@ extern crate lalrpop_util;
 use std::io;
 
 use presburger::nnf;
+
 lalrpop_mod!(
     #[allow(clippy::all)]
     pub grammer
