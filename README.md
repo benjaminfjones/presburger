@@ -22,17 +22,8 @@ common set of benchmark problems.
 ## Progress
 
   * 2022-03-10 -- Work in progress on a specific Fourier-Motzkin Elimination
-    (FME) implementation. Current plan is:
-      - define a common IR that supports integer and rational linear
-        expressions and relations
-      - implement an LQA solver using FME with arbitrary precision rationals
-        (using https://crates.io/crates/rug)
-      - implement an LIA solver using the Omega Test
-      - add pre-processing and translation passes to go from the (quantifier-free)
-        front-end AST to the IR for FME/Omega problems
-      - implement quantifier elimination
-      - identify benchmarks and compare against Coq-Omega
-  * 2020-07-26 -- Ironed out and tested (proptest) to_nnf for AST formulas,
+    (FME) implementation. Current plan is tracked in `PLAN.md`.
+  * 2020-07-26 -- Ironed out and tested (proptest) `to_nnf` for AST formulas,
     still need to do some memory profiling before commiting to the current AST
     representation.
   * 2020-07-07 -- Got out the dust mop
