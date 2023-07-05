@@ -5,10 +5,10 @@ authors = ["Benjamin Jones <benjaminfjones@gmail.com>"]
 edition = "2018"
 
 [build-dependencies]
-lalrpop = {version = "^0.19", features = ["lexer"]}
+lalrpop = {version = "^0.20", features = ["lexer"]}
 
 [dependencies]
-lalrpop-util = "^0.19"
+lalrpop-util = "^0.20"
 proptest = "^1.1"
 rand = "^0.8"
 regex = "^1.7"
