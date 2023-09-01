@@ -11,7 +11,7 @@ full theory based on quantifier elimination.
 The decision to use Rust for implementation was first to experiment with Rust
 and second to try and produce a highly efficient decision procedure for
 not just Linear Integer Arithmetic, but the full Presburger Arithmetic. The
-lofty goal is to outperform Coq Tactics Omega [2] & LIA [3] for some reaonably
+lofty goal is to outperform Coq Tactics Omega [2] & LIA [3] for some reasonably
 common set of benchmark problems.
 
 [1] https://en.wikipedia.org/wiki/Presburger_arithmetic
@@ -24,7 +24,7 @@ common set of benchmark problems.
   * 2022-03-10 -- Work in progress on a specific Fourier-Motzkin Elimination
     (FME) implementation. Current plan is tracked in `PLAN.md`.
   * 2020-07-26 -- Ironed out and tested (proptest) `to_nnf` for AST formulas,
-    still need to do some memory profiling before commiting to the current AST
+    still need to do some memory profiling before committing to the current AST
     representation.
   * 2020-07-07 -- Got out the dust mop
   * 2019-11-02 -- Switched parser generators to lalrpop which seems better
