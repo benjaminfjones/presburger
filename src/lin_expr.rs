@@ -124,6 +124,10 @@ impl LinEq {
         self.0.coeffs()
     }
 
+    pub fn const_(&self) -> Coeff {
+        self.0.const_()
+    }
+
     pub fn rhs(&self) -> &LinExpr {
         &self.0
     }
@@ -156,6 +160,9 @@ impl LinEq {
     /// then substituting for `x_2 = 3 x_1 - 2 x_3` produces `(3 + 3 * 4) x_1 + (0 - 2 * 4) x_3 = 0`,
     /// equivalent to `15 x_1 + 8 x_3 = 0`.
     pub fn subs(self, i: usize, other: &Self) -> Result<Self, ()> {
+        let n = self.nvars();
+        assert_eq!(n, self.0.nvars());
+        assert_eq!(n, other.0.nvars());
         if let Ok(a) = other.0.coeff(i) {
             let m: Coeff;
             if a == 1 {
@@ -168,18 +175,19 @@ impl LinEq {
                 // substitution for this variable isn't valid
                 return Err(());
             }
-            let n = self.nvars();
-            assert_eq!(n, self.0.nvars());
-            assert_eq!(n, other.0.nvars());
+            // Safe b/c nvars other == nvars self and we know other variable i
+            // is valid
+            let se_coeff = self.0.coeff_unchecked(i);
 
             let mut new_lhs = LinExpr::new_zeros(n);
             for j in 1..=n {
                 new_lhs.set_coeff_unchecked(
                     j,
                     self.0.coeff_unchecked(j)
-                        + m * other.0.coeff_unchecked(j) * self.0.coeff_unchecked(i),
+                        + m * other.0.coeff_unchecked(j) * se_coeff,
                 );
             }
+            new_lhs.set_const(self.0.const_() + m * other.0.const_() * se_coeff);
             return Ok(LinEq(new_lhs));
         }
         Err(())
@@ -236,10 +244,10 @@ mod test_expr_support {
         assert!(!eq1.is_subs_for(2)); // coeff of x_2 is 2
     }
 
-    /// Suppose vars are `[x_1, x_2]`,
-    /// - `self` is `3 x_1 + 4 x_2 = 0`
-    /// - `other` is `-3 x_1 + x_2 = 0`,
-    /// then substituting for `x_2 = 3 x_1` produces `15 x_1 = 0`
+    // Suppose vars are `[x_1, x_2]`,
+    // - `self` is `3 x_1 + 4 x_2 = 0`
+    // - `other` is `-3 x_1 + x_2 = 0`,
+    // then substituting for `x_2 = 3 x_1` produces `15 x_1 = 0`
     #[test]
     fn lin_eq_subs_2() {
         let eq1 = LinEq::new(LinExpr::new(&[0, 3, 4]));
@@ -249,7 +257,42 @@ mod test_expr_support {
         let eq3 = eq1.subs(2, &eq2).expect("subs failed");
         assert_eq!(eq3.nvars(), 2);
         assert_eq!(eq3.coeffs(), &[15, 0]);
+        assert_eq!(eq3.const_(), 0);
         assert!(!eq3.rhs().supported(2));
         // eq1 was moved: assert_eq!(eq1.nvars(), 2);
+    }
+
+    // Suppose vars are {x_1, x_2, x_3}`
+    // - self is  3  x_1 + 4 x_2 = 0 and
+    // - other is -3 x_1 +   x_2 + 2 x_3 = 0,
+    //
+    // Substituting for x_2 = 3 x_1 - 2 x_3 produces
+    // (3 + 3 * 4) x_1 + (0 - 2 * 4) x_3 = 0
+    // ==> 15 x_1 - 8 x_3 = 0.
+    #[test]
+    fn lin_eq_subs_3() {
+        let eq1 = LinEq::new(LinExpr::new(&[0, 3, 4, 0]));
+        let eq2 = LinEq::new(LinExpr::new(&[0, -3, 1, 2]));
+        let eq3 = eq1.subs(2, &eq2).expect("subs failed");
+        assert_eq!(eq3.nvars(), 3);
+        assert_eq!(eq3.coeffs(), &[15, 0, -8]);
+        assert_eq!(eq3.const_(), 0);
+        assert!(!eq3.rhs().supported(2));
+    }
+
+    // Substitution with non-zero constants
+    // - self  is -1 + 3 x_1 + 5 x_2 = 0
+    // - other is 7  -   x_1 + x_2   = 0
+    //
+    // Using other to substitute for x_1 in self leaves 20 + 8 x_2 = 0
+    #[test]
+    fn lin_eq_subs_const() {
+        let eq1 = LinEq::new(LinExpr::new(&[-1, 3, 5]));
+        let eq2 = LinEq::new(LinExpr::new(&[7, -1, 1]));
+        let eq3 = eq1.subs(1, &eq2).expect("subs failed");
+        assert_eq!(eq3.coeffs(), &[0, 8]);
+        assert_eq!(eq3.const_(), 20);
+        assert!(!eq3.rhs().supported(1));
+        assert!(eq3.rhs().supported(2));
     }
 }
