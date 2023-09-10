@@ -1,6 +1,35 @@
 /// Implementation of affine linear expressions and equality/inequality relations
 
+use std::fmt;
+use std::error::Error;
 use crate::types::Coeff;
+
+
+#[derive(Debug)]
+pub enum LinExprError {
+    /// Custom error type returned when linear expression variable indices
+    /// are out of bounds.
+    IndexOutOfBounds,
+    /// Custom error type returned when an linear expression, equality, or
+    /// inequality assertion is violated.
+    AssertionError,
+}
+
+impl fmt::Display for LinExprError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::IndexOutOfBounds => {
+                write!(f, "Coefficient index out of bounds")
+            },
+            Self::AssertionError => {
+                write!(f, "Assertion error")
+            }
+        }
+    }
+}
+
+impl Error for LinExprError { }
+
 
 pub struct LinExpr {
     // Coefficient vector. The 0th element corresponds to the value of the
@@ -50,11 +79,11 @@ impl LinExpr {
     }
 
     /// Get the coefficient a_i
-    pub fn coeff(&self, i: usize) -> Result<Coeff, ()> {
+    pub fn coeff(&self, i: usize) -> Result<Coeff, LinExprError> {
         if 1 <= i && i <= self.nvars() {
             Ok(self.coeff[i])
         } else {
-            Err(())
+            Err(LinExprError::IndexOutOfBounds)
         }
     }
 
@@ -63,12 +92,12 @@ impl LinExpr {
     }
 
     /// Set the coefficient a_i
-    pub fn set_coeff(&mut self, i: usize, value: Coeff) -> Result<(), ()> {
+    pub fn set_coeff(&mut self, i: usize, value: Coeff) -> Result<(), LinExprError> {
         if 1 <= i && i <= self.nvars() {
             self.coeff[i] = value;
             Ok(())
         } else {
-            Err(())
+            Err(LinExprError::IndexOutOfBounds)
         }
     }
 
@@ -159,7 +188,7 @@ impl LinEq {
     ///
     /// then substituting for `x_2 = 3 x_1 - 2 x_3` produces `(3 + 3 * 4) x_1 + (0 - 2 * 4) x_3 = 0`,
     /// equivalent to `15 x_1 - 8 x_3 = 0`.
-    pub fn subs(self, i: usize, other: &Self) -> Result<Self, ()> {
+    pub fn subs(self, i: usize, other: &Self) -> Result<Self, LinExprError> {
         let n = self.nvars();
         assert_eq!(n, self.0.nvars());
         assert_eq!(n, other.0.nvars());
@@ -173,7 +202,7 @@ impl LinEq {
                 m = 1;
             } else {
                 // substitution for this variable isn't valid
-                return Err(());
+                return Err(LinExprError::AssertionError);
             }
             // Safe b/c nvars other == nvars self and we know other variable i
             // is valid
@@ -190,7 +219,7 @@ impl LinEq {
             new_lhs.set_const(self.0.const_() + m * other.0.const_() * se_coeff);
             return Ok(LinEq(new_lhs));
         }
-        Err(())
+        Err(LinExprError::IndexOutOfBounds)
     }
 }
 
@@ -203,8 +232,8 @@ mod test_expr_support {
         let e1 = LinExpr::new(&[1, 0, 1]);
         assert_eq!(e1.nvars(), 2);
         assert_eq!(e1.const_(), 1);
-        assert_eq!(e1.coeff(1), Ok(0));
-        assert_eq!(e1.coeff(2), Ok(1));
+        assert_eq!(e1.coeff(1).unwrap(), 0);
+        assert_eq!(e1.coeff(2).unwrap(), 1);
 
         assert!(!e1.supported(1));
         assert!(e1.supported(2));
@@ -219,19 +248,19 @@ mod test_expr_support {
         let mut e1 = LinExpr::new(&[1, 0, 1]);
         e1.add_var(3);
         assert_eq!(e1.nvars(), 3);
-        assert_eq!(e1.coeff(2), Ok(1));
-        assert_eq!(e1.coeff(3), Ok(3));
+        assert_eq!(e1.coeff(2).unwrap(), 1);
+        assert_eq!(e1.coeff(3).unwrap(), 3);
         assert!(e1.supported(3));
 
         let mut e2 = LinExpr::new_zeros(0);
         assert_eq!(e2.nvars(), 0);
         assert_eq!(e2.const_(), 0);
-        assert_eq!(e2.coeff(1), Err(()));
+        assert!(e2.coeff(1).is_err());
         assert!(!e2.supported(1));
         e2.add_var(-1);
         assert_eq!(e2.nvars(), 1);
         assert_eq!(e2.const_(), 0);
-        assert_eq!(e2.coeff(1), Ok(-1));
+        assert_eq!(e2.coeff(1).unwrap(), -1);
         assert!(e2.supported(1));
     }
 
