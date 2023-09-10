@@ -1,7 +1,6 @@
 /// Implementation of affine linear expressions and equality/inequality relations
 
-// TODO: eventually replace with arbitrary precision integers from crate::rug
-type Coeff = i64;
+use crate::types::Coeff;
 
 pub struct LinExpr {
     // Coefficient vector. The 0th element corresponds to the value of the
@@ -24,7 +23,7 @@ pub struct LinExpr {
 impl LinExpr {
     /// Create a new `LinExpr` from a slice of `Coeff`
     pub fn new(coeffs: &[Coeff]) -> Self {
-        if coeffs.len() == 0 {
+        if coeffs.is_empty() {
             panic!("coefficient array must be non-empty")
         }
         Self {
@@ -132,9 +131,10 @@ impl LinEq {
         &self.0
     }
 
-    // An equality is a possible substitution iff. some coeff = +-1.
-    pub fn is_subs(&self) -> bool {
-        self.0.coeffs().iter().any(|&c| c == 1 || c == -1)
+    /// An equality is a possible substitution iff. some coeff = +-1.
+    /// Return the position of the first substitution coefficient, on None.
+    pub fn is_subs(&self) -> Option<usize> {
+        self.0.coeffs().iter().position(|&c| c == 1 || c == -1).map(|i| i+1)
     }
 
     // An equality is a possible substitution for x_i iff. coeff(x_i) = +-1.
@@ -158,7 +158,7 @@ impl LinEq {
     /// - `other` is `-3 x_1 +   x_2 + 2 x_3 = 0`,
     ///
     /// then substituting for `x_2 = 3 x_1 - 2 x_3` produces `(3 + 3 * 4) x_1 + (0 - 2 * 4) x_3 = 0`,
-    /// equivalent to `15 x_1 + 8 x_3 = 0`.
+    /// equivalent to `15 x_1 - 8 x_3 = 0`.
     pub fn subs(self, i: usize, other: &Self) -> Result<Self, ()> {
         let n = self.nvars();
         assert_eq!(n, self.0.nvars());
@@ -239,9 +239,9 @@ mod test_expr_support {
     fn lin_eq_basic_api() {
         let eq1 = LinEq::new(LinExpr::new(&[0, 1, 2]));
         assert_eq!(eq1.nvars(), 2);
-        assert!(eq1.is_subs());
-        assert!(eq1.is_subs_for(1)); // coeff of x_1 is 1
-        assert!(!eq1.is_subs_for(2)); // coeff of x_2 is 2
+        assert_eq!(eq1.is_subs(), Some(1));
+        assert!(eq1.is_subs_for(1)); // subs: coeff of x_1 is 1
+        assert!(!eq1.is_subs_for(2)); // not subs: coeff of x_2 is 2
     }
 
     // Suppose vars are `[x_1, x_2]`,
