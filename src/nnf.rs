@@ -1,4 +1,6 @@
-/// Implement a reduction of the Presburger AST to Negation Normal Form (NNF).
+//! Simple implementation of [Negation Normal Form](https://en.wikipedia.org/wiki/Negation_normal_form)
+//! (NNF) for the Presburger AST
+
 use crate::ast::Formula;
 #[allow(unused_imports)]
 use crate::ast_strategy;

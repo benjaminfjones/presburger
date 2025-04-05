@@ -1,3 +1,5 @@
+//! Property-based testing strategies for [`ast::Formula`], [`ast::Term`], etc.
+
 use crate::ast;
 use proptest::prelude::*;
 

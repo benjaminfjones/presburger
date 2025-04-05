@@ -1,6 +1,7 @@
+//! Implementation of affine linear expressions and equality/inequality relations
+
 use crate::types::Coeff;
 use std::error::Error;
-/// Implementation of affine linear expressions and equality/inequality relations
 use std::fmt;
 
 #[derive(Debug)]
