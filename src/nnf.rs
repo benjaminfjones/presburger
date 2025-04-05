@@ -60,14 +60,14 @@ pub fn verify_nnf(p: &Formula) -> bool {
     match p {
         // NOT can only appear applied to an Atom
         Formula::Not(bp) => matches!(**bp, Formula::Atom(_)),
-        Formula::And(bp, bq) => verify_nnf(&*bp) && verify_nnf(&*bq),
-        Formula::Or(bp, bq) => verify_nnf(&*bp) && verify_nnf(&*bq),
+        Formula::And(bp, bq) => verify_nnf(bp) && verify_nnf(bq),
+        Formula::Or(bp, bq) => verify_nnf(bp) && verify_nnf(bq),
         // Impl cannot appear
         Formula::Impl(_, _) => false,
         // Iff cannot appear
         Formula::Iff(_, _) => false,
-        Formula::Exists(_, bp) => verify_nnf(&*bp),
-        Formula::Forall(_, bp) => verify_nnf(&*bp),
+        Formula::Exists(_, bp) => verify_nnf(bp),
+        Formula::Forall(_, bp) => verify_nnf(bp),
         Formula::Atom(_) => true,
     }
 }

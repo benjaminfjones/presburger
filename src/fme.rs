@@ -1,19 +1,18 @@
-/// Implementation of Fourier-Motzkin Elimination
-/// https://en.wikipedia.org/wiki/Fourier%E2%80%93Motzkin_elimination
-
+//! Implementation of Fourier-Motzkin Elimination
+//! https://en.wikipedia.org/wiki/Fourier%E2%80%93Motzkin_elimination
 
 pub mod util {
 
-    use std::ops::Rem;
     use crate::types::Coeff;
     use proptest::prelude::*;
+    use std::ops::Rem;
 
     /// Symmetric modulo.
     ///
     /// a \hat{mod} b := a - b * \floor{a/b + 1/2}
     ///               := a - b * \floor{(2a + b)/2b}
     pub fn symmod(a: Coeff, b: Coeff) -> Coeff {
-        a - b * div_floor(2*a + b, 2*b)
+        a - b * div_floor(2 * a + b, 2 * b)
     }
 
     /// Symmetric modulo alternate definition which is equivalent to `symmod`.
@@ -21,11 +20,7 @@ pub mod util {
     /// a \hat{mod} b := (a mod b) if a mod b < b/2 else ((a mod b) - b)
     pub fn symmod_alt(a: Coeff, b: Coeff) -> Coeff {
         let amb = a.rem_euclid(b);
-        if 2*amb < b {
-            amb
-        } else {
-            amb - b
-        }
+        if 2 * amb < b { amb } else { amb - b }
     }
 
     /// Integer quotient of `num` by `den`, rounding towards negative infinity
@@ -78,7 +73,6 @@ pub mod util {
             let b = 190459346;
             assert_eq!(symmod(a, b), symmod_alt(a, b));
         }
-
     }
 
     proptest! {

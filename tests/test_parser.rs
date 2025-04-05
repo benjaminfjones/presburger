@@ -51,9 +51,11 @@ mod test_parser {
             assert!(grammer::AtomParser::new().parse(c).is_ok(), "case: {}", c);
         }
         // negative tests
-        assert!(grammer::AtomParser::new()
-            .parse("y + (x + 1) + z > 0")
-            .is_err());
+        assert!(
+            grammer::AtomParser::new()
+                .parse("y + (x + 1) + z > 0")
+                .is_err()
+        );
     }
 
     #[test]

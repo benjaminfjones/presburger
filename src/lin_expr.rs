@@ -1,9 +1,7 @@
-/// Implementation of affine linear expressions and equality/inequality relations
-
-use std::fmt;
-use std::error::Error;
 use crate::types::Coeff;
-
+use std::error::Error;
+/// Implementation of affine linear expressions and equality/inequality relations
+use std::fmt;
 
 #[derive(Debug)]
 pub enum LinExprError {
@@ -20,7 +18,7 @@ impl fmt::Display for LinExprError {
         match self {
             Self::IndexOutOfBounds => {
                 write!(f, "Coefficient index out of bounds")
-            },
+            }
             Self::AssertionError => {
                 write!(f, "Assertion error")
             }
@@ -28,8 +26,7 @@ impl fmt::Display for LinExprError {
     }
 }
 
-impl Error for LinExprError { }
-
+impl Error for LinExprError {}
 
 pub struct LinExpr {
     // Coefficient vector. The 0th element corresponds to the value of the
@@ -163,7 +160,11 @@ impl LinEq {
     /// An equality is a possible substitution iff. some coeff = +-1.
     /// Return the position of the first substitution coefficient, on None.
     pub fn is_subs(&self) -> Option<usize> {
-        self.0.coeffs().iter().position(|&c| c == 1 || c == -1).map(|i| i+1)
+        self.0
+            .coeffs()
+            .iter()
+            .position(|&c| c == 1 || c == -1)
+            .map(|i| i + 1)
     }
 
     // An equality is a possible substitution for x_i iff. coeff(x_i) = +-1.
@@ -212,8 +213,7 @@ impl LinEq {
             for j in 1..=n {
                 new_lhs.set_coeff_unchecked(
                     j,
-                    self.0.coeff_unchecked(j)
-                        + m * other.0.coeff_unchecked(j) * se_coeff,
+                    self.0.coeff_unchecked(j) + m * other.0.coeff_unchecked(j) * se_coeff,
                 );
             }
             new_lhs.set_const(self.0.const_() + m * other.0.const_() * se_coeff);
