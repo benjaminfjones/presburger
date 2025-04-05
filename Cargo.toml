@@ -2,14 +2,13 @@
 name = "presburger"
 version = "0.1.0"
 authors = ["Benjamin Jones <benjaminfjones@gmail.com>"]
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-lalrpop = "^0.20"
-lalrpop-util = "^0.20"
-proptest = "^1.1"
-# TODO: eventually depend on rug for integers
-# rug = "1.21.0"
+lalrpop = "^0.22"
+lalrpop-util = "^0.22"
+proptest = "^1.6"
+num-rational = "^0.4"
 
 [build-dependencies]
-lalrpop = "^0.20"
+lalrpop = "^0.22"
