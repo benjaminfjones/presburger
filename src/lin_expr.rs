@@ -255,6 +255,8 @@ impl LinEq {
 
     /// An equality is a possible substitution iff. some coeff == +-1.
     /// Return the position of the first substitution coefficient, or None.
+    ///
+    /// TODO: generalize all the subs methods to rationals
     pub fn is_subs(&self) -> Option<usize> {
         self.0
             .coeffs()

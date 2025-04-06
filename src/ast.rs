@@ -1,17 +1,17 @@
-/// AST module
-///
-/// This module defines the naive AST for Presburger formulas. These
-/// formulas are part of the 1st order logic Th(0, 1, +, <=, ==).
-///
-/// For example,
-///
-/// 1) forall y. y < y + 1
-/// 2) 0 <= x /\ x <= 10
-/// 3) forall y. (exists x. x <= y ==> x + 1 <= y)
-/// 4) ((P ==> Q) ==> P) ==> Q
-///
-/// The AST is produced by the parser/grammer defined in `grammer.lalrpop`.
-///
+//! AST module
+//!
+//! This module defines the naive AST for Presburger formulas. These
+//! formulas are part of the 1st order logic Th(0, 1, +, <=, ==).
+//!
+//! For example,
+//!
+//! 1) forall y. y < y + 1
+//! 2) 0 <= x /\ x <= 10
+//! 3) forall y. (exists x. x <= y ==> x + 1 <= y)
+//! 4) ((P ==> Q) ==> P) ==> Q
+//!
+//! The AST is produced by the parser/grammer defined in `grammer.lalrpop`.
+//!
 use std::fmt;
 
 #[derive(Clone, Debug)]
@@ -164,6 +164,8 @@ impl PartialEq for Atom {
 impl Eq for Atom {}
 
 /// `Term` Represents a base numerical term
+///
+/// TODO: missing scalar multiple of variable
 #[derive(Clone, Debug)]
 pub enum Term {
     /// non-negative integer literal
