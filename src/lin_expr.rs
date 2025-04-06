@@ -1,6 +1,7 @@
 //! Implementation of affine linear expressions and equality/inequality relations
 
 use crate::types::Coeff;
+use std::cmp::Ordering;
 use std::error::Error;
 use std::fmt;
 
@@ -29,6 +30,17 @@ impl fmt::Display for LinExprError {
 
 impl Error for LinExprError {}
 
+/// Affine integer-linear expression.
+///
+/// `LinExpr` are used to represent the left hand side of normalized affine linear
+/// relations like equality and inequality with zero, e.g.
+///
+/// b + \sum_{i=1}^{n} a_i x_i = 0
+///
+/// or...
+///
+/// b + \sum_{i=1}^{n} a_i x_i \le 0
+#[derive(Debug)]
 pub struct LinExpr {
     // Coefficient vector. The 0th element corresponds to the value of the
     // constant term; this is always present, but its value may be 0.
@@ -37,16 +49,88 @@ pub struct LinExpr {
     coeff: Vec<Coeff>,
 }
 
-/// Affine integer-linear expression.
+impl PartialEq for LinExpr {
+    /// Custom Eq allows correct comparison of
+    /// linear expressions even if the underlying arrays of
+    /// coefficients are different length (e.g. additional variables were
+    /// added to one of them)
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// # use presburger::lin_expr::*;
+    /// # fn main () {
+    /// // Equalities with same and different nvars
+    /// let e0 = LinExpr::new(&vec![0i64, 1, 0]);
+    /// let e1 = LinExpr::new(&vec![0i64, 1]);
+    /// assert_eq!(e0, e0);
+    /// assert_eq!(e0, e1);
+    /// assert_eq!(e1, e0);
+    ///
+    /// // x_1 != x_1 + 2 x_2, representations w/ same nvars
+    /// // x_1 != x_1 + 2 x_2, representations w/ different nvars
+    /// let e2 = LinExpr::new(&vec![0i64, 1, 2]);
+    /// assert_ne!(e0, e2);
+    /// assert_ne!(e1, e2);
+    ///
+    /// // x_1 + 2 x_2 != -1 + x1 + 2 x2
+    /// let e3 = LinExpr::new(&vec![-1i64, 1, 2]);
+    /// assert_ne!(e2, e3);
+    /// # }
+    ///
+    /// ```
+    ///
+    fn eq(&self, other: &Self) -> bool {
+        if self.const_() != other.const_() {
+            return false;
+        }
+        // Compare lengths of self and other after monomials with coeff
+        // zero are truncated from the end.
+        let sc = self.coeffs();
+        let oc = other.coeffs();
+        match sc.len().cmp(&oc.len()) {
+            Ordering::Less => oc[sc.len()..].iter().all(|a| *a == 0) && sc == &oc[..sc.len()],
+            Ordering::Equal => sc == oc,
+            Ordering::Greater => sc[oc.len()..].iter().all(|a| *a == 0) && &sc[..oc.len()] == oc,
+        }
+    }
+}
+
+impl Eq for LinExpr {}
+
+/// Display the expression with variables ordered and only monomials with
+/// non-zero coefficient.
 ///
-/// `LinExpr` are used to represent the right hand side of normalized affine linear
-/// relations like equality and inequality with zero, e.g.
+/// Example:
 ///
-/// b + \sum_{i=1}^{n} a_i x_i = 0
+/// ```
+/// # use presburger::lin_expr::*;
+/// # fn main () {
+/// let e0 = LinExpr::new(&vec![0i64, 1, 0, 2]);
+/// assert_eq!(e0.to_string(), "1 x_1 + 2 x_3");
 ///
-/// or...
-///
-/// b + \sum_{i=1}^{n} a_i x_i \le 0
+/// let e1 = LinExpr::new(&vec![5i64, 0, 0, -10]);
+/// assert_eq!(e1.to_string(), "5 + (-10) x_3");
+/// # }
+/// ```
+impl fmt::Display for LinExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut term_vec = Vec::new();
+        if self.const_() != 0 {
+            term_vec.push(format!("{}", self.const_()));
+        }
+        let coeffs = self.coeffs();
+        for (i, a) in coeffs.iter().enumerate() {
+            if *a > 0 {
+                term_vec.push(format!("{} x_{}", a, i + 1));
+            } else if *a < 0 {
+                term_vec.push(format!("({}) x_{}", a, i + 1));
+            }
+        }
+        write!(f, "{}", term_vec.join(" + "))
+    }
+}
+
 impl LinExpr {
     /// Create a new `LinExpr` from a slice of `Coeff`
     pub fn new(coeffs: &[Coeff]) -> Self {
@@ -134,9 +218,16 @@ impl LinExpr {
     }
 }
 
+/// Represents `LinExp == 0`
+#[derive(Debug, PartialEq, Eq)]
 pub struct LinEq(LinExpr);
 
-/// Affine linear equation of the form: lin_expr = 0
+impl fmt::Display for LinEq {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} = 0", self.0)
+    }
+}
+
 impl LinEq {
     pub fn new(e: LinExpr) -> Self {
         LinEq(e)
@@ -154,12 +245,12 @@ impl LinEq {
         self.0.const_()
     }
 
-    pub fn rhs(&self) -> &LinExpr {
+    pub fn lhs(&self) -> &LinExpr {
         &self.0
     }
 
-    /// An equality is a possible substitution iff. some coeff = +-1.
-    /// Return the position of the first substitution coefficient, on None.
+    /// An equality is a possible substitution iff. some coeff == +-1.
+    /// Return the position of the first substitution coefficient, or None.
     pub fn is_subs(&self) -> Option<usize> {
         self.0
             .coeffs()
@@ -168,28 +259,37 @@ impl LinEq {
             .map(|i| i + 1)
     }
 
-    // An equality is a possible substitution for x_i iff. coeff(x_i) = +-1.
-    //
-    // Returns `false` for variable indexes that are out of bounds.
+    /// An equality is a possible substitution for x_i iff. coeff(x_i) == +-1.
+    ///
+    /// Returns `false` for variable indexes that are out of bounds.
     pub fn is_subs_for(&self, i: usize) -> bool {
-        if let Ok(c) = self.0.coeff(i) {
-            return c == 1 || c == -1;
-        }
-        false
+        let Ok(c) = self.0.coeff(i) else { return false };
+        c == 1 || c == -1
     }
 
-    /// Substitute a linear term for x_i using `other`, which must be a substitution equation
-    /// (i.e. other.coeff(x_i) == Some(+-1).
+    /// Substitute a linear expression for x_i using `other`, which must be a substitution equation,
+    /// i.e. other.coeff(x_i) == Some(+-1).
     ///
     /// Because the result is a new equation, resulting from a deductive step, this method
-    /// consumes `self` and returns a new owned equation.
+    /// consumes `self` and returns a new equation.
     ///
-    /// For example, Suppose vars are `[x_1, x_2]`,
+    /// For example, Suppose vars are `{x_1, x_2, x_3}`,
     /// - `self` is  `3  x_1 + 4 x_2 = 0` and
     /// - `other` is `-3 x_1 +   x_2 + 2 x_3 = 0`,
     ///
-    /// then substituting for `x_2 = 3 x_1 - 2 x_3` produces `(3 + 3 * 4) x_1 + (0 - 2 * 4) x_3 = 0`,
+    /// then substituting `x_2 = 3 x_1 - 2 x_3` produces `(3 + 3 * 4) x_1 + (0 - 2 * 4) x_3 = 0`,
     /// equivalent to `15 x_1 - 8 x_3 = 0`.
+    ///
+    /// ```
+    /// # use presburger::lin_expr::*;
+    /// # fn main () -> Result<(), LinExprError> {
+    /// let eq = LinEq::new(LinExpr::new(&vec![0, 3, 4, 0]));
+    /// let other = LinEq::new(LinExpr::new(&vec![0, -3, 1, 2]));
+    /// let res = eq.subs(2, &other)?;
+    /// assert_eq!(res, LinEq::new(LinExpr::new(&vec![0, 15, 0, -8])));
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn subs(self, i: usize, other: &Self) -> Result<Self, LinExprError> {
         let n = self.nvars();
         assert_eq!(n, self.0.nvars());
@@ -288,7 +388,7 @@ mod test_expr_support {
         assert_eq!(eq3.nvars(), 2);
         assert_eq!(eq3.coeffs(), &[15, 0]);
         assert_eq!(eq3.const_(), 0);
-        assert!(!eq3.rhs().supported(2));
+        assert!(!eq3.lhs().supported(2));
         // eq1 was moved: assert_eq!(eq1.nvars(), 2);
     }
 
@@ -307,7 +407,7 @@ mod test_expr_support {
         assert_eq!(eq3.nvars(), 3);
         assert_eq!(eq3.coeffs(), &[15, 0, -8]);
         assert_eq!(eq3.const_(), 0);
-        assert!(!eq3.rhs().supported(2));
+        assert!(!eq3.lhs().supported(2));
     }
 
     // Substitution with non-zero constants
@@ -322,7 +422,7 @@ mod test_expr_support {
         let eq3 = eq1.subs(1, &eq2).expect("subs failed");
         assert_eq!(eq3.coeffs(), &[0, 8]);
         assert_eq!(eq3.const_(), 20);
-        assert!(!eq3.rhs().supported(1));
-        assert!(eq3.rhs().supported(2));
+        assert!(!eq3.lhs().supported(1));
+        assert!(eq3.lhs().supported(2));
     }
 }
