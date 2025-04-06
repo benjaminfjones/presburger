@@ -233,6 +233,10 @@ impl LinEq {
         LinEq(e)
     }
 
+    pub fn from_coeffs(coeffs: &[Coeff]) -> Self {
+        LinEq(LinExpr::new(coeffs))
+    }
+
     pub fn nvars(&self) -> usize {
         self.0.nvars()
     }
@@ -401,8 +405,8 @@ mod test_expr_support {
     // ==> 15 x_1 - 8 x_3 = 0.
     #[test]
     fn lin_eq_subs_3() {
-        let eq1 = LinEq::new(LinExpr::new(&[0, 3, 4, 0]));
-        let eq2 = LinEq::new(LinExpr::new(&[0, -3, 1, 2]));
+        let eq1 = LinEq::from_coeffs(&[0, 3, 4, 0]);
+        let eq2 = LinEq::from_coeffs(&[0, -3, 1, 2]);
         let eq3 = eq1.subs(2, &eq2).expect("subs failed");
         assert_eq!(eq3.nvars(), 3);
         assert_eq!(eq3.coeffs(), &[15, 0, -8]);
@@ -417,8 +421,8 @@ mod test_expr_support {
     // Using other to substitute for x_1 in self leaves 20 + 8 x_2 = 0
     #[test]
     fn lin_eq_subs_const() {
-        let eq1 = LinEq::new(LinExpr::new(&[-1, 3, 5]));
-        let eq2 = LinEq::new(LinExpr::new(&[7, -1, 1]));
+        let eq1 = LinEq::from_coeffs(&[-1, 3, 5]);
+        let eq2 = LinEq::from_coeffs(&[7, -1, 1]);
         let eq3 = eq1.subs(1, &eq2).expect("subs failed");
         assert_eq!(eq3.coeffs(), &[0, 8]);
         assert_eq!(eq3.const_(), 20);
