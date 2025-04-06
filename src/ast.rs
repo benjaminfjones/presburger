@@ -13,7 +13,7 @@
 //! The AST is produced by the parser/grammer defined in `grammer.lalrpop`.
 //!
 #[allow(unused_imports)]
-use crate::types::{BigRat, One};
+use crate::types::{BigRat, FromPrimitive, One};
 use std::fmt;
 
 #[derive(Clone, Debug)]
@@ -171,7 +171,7 @@ impl Eq for Atom {}
 #[derive(Clone, Debug)]
 pub enum Term {
     /// non-negative integer literal
-    Num(i64),
+    Num(BigRat),
     /// numerical variable
     ScalarVar(BigRat, Var),
     /// t1 + t2
@@ -180,8 +180,8 @@ pub enum Term {
 
 /// Implement smart constructors
 impl Term {
-    pub fn num(x: i64) -> Self {
-        Term::Num(x)
+    pub fn num(x: impl Into<BigRat>) -> Self {
+        Term::Num(x.into())
     }
 
     pub fn scalar_var(s: BigRat, name: &str) -> Self {
@@ -255,9 +255,9 @@ mod test {
 
     #[test]
     fn term_eq() {
-        let t0 = Term::num(0);
-        let t1 = Term::num(1);
-        let t2 = Term::num(2);
+        let t0 = Term::num(BigRat::from_i64(0).unwrap());
+        let t1 = Term::num(BigRat::from_i64(1).unwrap());
+        let t2 = Term::num(BigRat::from_i64(2).unwrap());
 
         assert_eq!(t0, t0);
         assert!(t0 != t1);
@@ -266,7 +266,10 @@ mod test {
         let t4 = Term::scalar_var(BigRat::one(), "x"); // x
         assert_eq!(t4, t4);
         assert_ne!(t0, t4);
-        let t5 = Term::tadd(Term::scalar_var(BigRat::one(), "x"), Term::num(1)); // x + 1
+        let t5 = Term::tadd(
+            Term::scalar_var(BigRat::one(), "x"),
+            Term::num(BigRat::from_i64(1).unwrap()),
+        ); // x + 1
         assert_eq!(t5, t5);
         assert_ne!(t0, t5);
         assert_ne!(t4, t5);
@@ -274,11 +277,12 @@ mod test {
 
     #[test]
     fn atom_eq() {
+        let zero = Term::num(BigRat::from_i64(0).unwrap());
         let a1 = Atom::truth(true);
         let a2 = Atom::truth(false);
         let a3 = Atom::var("P");
-        let a4 = Atom::equality(Term::num(0), Term::num(0));
-        let a5 = Atom::equality(Term::num(0), Term::num(0)); // intentionally same as a4
+        let a4 = Atom::equality(zero.clone(), zero.clone());
+        let a5 = Atom::equality(zero.clone(), zero.clone()); // intentionally same as a4
 
         assert_eq!(a1, a1);
         assert_eq!(a2, a2);

@@ -8,8 +8,11 @@ grammar;
 // Numerical terms
 ////////////////////////////////////////////////////////////
 
-/// Non-negative integer literal
-Num: i64 = <s:r"[0-9]+"> => i64::from_str(s).unwrap();
+/// Integer literal
+Num: i64 = <s:r"-?[0-9]+"> => i64::from_str(s).unwrap();
+
+/// Rational literal
+Rat: BigRat = <n: Num> "/" <d: Num> => BigRat::new(n.into(), d.into());
 
 /// valid numerical variable names start with a lowercase letter
 Var: Var = <s:r"[a-z][a-zA-Z0-9]*"> => Var(String::from(s));
@@ -17,8 +20,10 @@ Var: Var = <s:r"[a-z][a-zA-Z0-9]*"> => Var(String::from(s));
 /// Atomic term
 AtomicTerm: Term = {
     <a:Num> <v:Var> => Term::ScalarVar(BigRat::from_integer(a.into()), v),
+    <r:Rat> <v:Var> => Term::ScalarVar(r, v),
     <v:Var> => Term::ScalarVar(BigRat::one(), v),
-    <n:Num> => Term::Num(n),
+    <n:Num> => Term::Num(BigRat::from_integer(n.into())),
+    <r:Rat> => Term::Num(r),
     "(" <t:Term> ")" => t,
 };
 
@@ -29,7 +34,7 @@ pub Term: Term  = {
 
 
 ////////////////////////////////////////////////////////////
-// Formulaicates
+// Formulas
 //
 // The grammer is built so that the logical connectives bind in order from
 // highest to lowest precedence:
@@ -41,9 +46,10 @@ pub Term: Term  = {
 /// valid logical variable names are uppercase
 LogicalVar: Var = <s:r"[A-Z][A-Z0-9]*"> => Var(String::from(s));
 
+/// Logical atoms
 pub Atom: Atom = {
-    "T" => Atom::TruthValue(true),
-    "F" => Atom::TruthValue(false),
+    "@T" => Atom::TruthValue(true),
+    "@F" => Atom::TruthValue(false),
     <v:LogicalVar> => Atom::LogicalVar(v),
     <t1:Term> "=" <t2:Term> => Atom::Equality(Box::new(t1), Box::new(t2)),
     <t1:Term> "<=" <t2:Term> => Atom::LessEq(Box::new(t1), Box::new(t2)),

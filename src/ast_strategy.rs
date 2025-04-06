@@ -1,6 +1,7 @@
 //! Property-based testing strategies for [`ast::Formula`], [`ast::Term`], etc.
 
-use crate::{ast, types::BigRat};
+use crate::ast;
+use crate::types::{BigRat, FromPrimitive};
 use proptest::prelude::*;
 
 pub fn arb_logic_var() -> impl Strategy<Value = ast::Var> {
@@ -13,7 +14,7 @@ pub fn arb_term(max_depth: u32, max_size: u32) -> impl Strategy<Value = ast::Ter
         // use lowercase for term vars
         (any::<i64>(), "[a-z]{1,3}")
             .prop_map(|(a, x)| ast::Term::scalar_var(BigRat::from_integer(a.into()), &x)),
-        any::<i64>().prop_map(ast::Term::num),
+        any::<i64>().prop_map(|x| ast::Term::num(BigRat::from_i64(x).unwrap())),
     ];
     leaf.prop_recursive(max_depth, max_size, max_size, |inner| {
         let inner_copy = inner.clone();
