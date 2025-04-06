@@ -20,12 +20,12 @@ mod test_parser {
 
     #[test]
     fn test_var() {
-        let cases = vec!["x", "(x)", "((((y))))"];
+        let cases = vec!["x", "(x)", "((((y))))", "2 z"];
         for c in cases {
             assert!(grammer::TermParser::new().parse(c).is_ok(), "case: {}", c);
         }
         // negative tests:
-        assert!(grammer::TermParser::new().parse("2z").is_err());
+        assert!(grammer::TermParser::new().parse("7 z 7").is_err());
     }
 
     #[test]

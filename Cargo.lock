@@ -408,7 +408,9 @@ version = "0.1.0"
 dependencies = [
  "lalrpop",
  "lalrpop-util",
+ "num-bigint",
  "num-rational",
+ "num-traits",
  "proptest",
 ]
 

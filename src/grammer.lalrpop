@@ -1,5 +1,5 @@
 use std::str::FromStr;  // copied verbatim into generated parser .rs file
-
+use presburger::types::{BigRat, One};
 use presburger::ast::{Atom, Formula, Term, Var};
 
 grammar;
@@ -16,8 +16,9 @@ Var: Var = <s:r"[a-z][a-zA-Z0-9]*"> => Var(String::from(s));
 
 /// Atomic term
 AtomicTerm: Term = {
+    <a:Num> <v:Var> => Term::ScalarVar(BigRat::from_integer(a.into()), v),
+    <v:Var> => Term::ScalarVar(BigRat::one(), v),
     <n:Num> => Term::Num(n),
-    <v:Var> => Term::Var(v),
     "(" <t:Term> ")" => t,
 };
 

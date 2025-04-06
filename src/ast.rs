@@ -12,6 +12,8 @@
 //!
 //! The AST is produced by the parser/grammer defined in `grammer.lalrpop`.
 //!
+#[allow(unused_imports)]
+use crate::types::{BigRat, One};
 use std::fmt;
 
 #[derive(Clone, Debug)]
@@ -171,7 +173,7 @@ pub enum Term {
     /// non-negative integer literal
     Num(i64),
     /// numerical variable
-    Var(Var),
+    ScalarVar(BigRat, Var),
     /// t1 + t2
     Add(Box<Term>, Box<Term>),
 }
@@ -182,8 +184,8 @@ impl Term {
         Term::Num(x)
     }
 
-    pub fn var(name: &str) -> Self {
-        Term::Var(Var::new(name))
+    pub fn scalar_var(s: BigRat, name: &str) -> Self {
+        Term::ScalarVar(s, Var::new(name))
     }
 
     /// Term add
@@ -196,7 +198,7 @@ impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Term::Num(x) => write!(f, "{}", x),
-            Term::Var(x) => write!(f, "{}", x),
+            Term::ScalarVar(a, x) => write!(f, "{} {}", a, x),
             Term::Add(a, b) => write!(f, "({} + {})", *a, *b),
         }
     }
@@ -206,7 +208,7 @@ impl PartialEq for Term {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Term::Num(x), Term::Num(y)) => x == y,
-            (Term::Var(x), Term::Var(y)) => x == y,
+            (Term::ScalarVar(a, x), Term::ScalarVar(b, y)) => a == b && x == y,
             (Term::Add(a, b), Term::Add(c, d)) => a == c && b == d,
             _ => false,
         }
@@ -261,14 +263,13 @@ mod test {
         assert!(t0 != t1);
         assert!(t0 != t2);
 
-        let t4 = Term::var("x"); // x
+        let t4 = Term::scalar_var(BigRat::one(), "x"); // x
         assert_eq!(t4, t4);
-        assert!(t0 != t4);
-
-        let t5 = Term::tadd(Term::var("x"), Term::num(1)); // x + 1
+        assert_ne!(t0, t4);
+        let t5 = Term::tadd(Term::scalar_var(BigRat::one(), "x"), Term::num(1)); // x + 1
         assert_eq!(t5, t5);
-        assert!(t0 != t5);
-        assert!(t4 != t5);
+        assert_ne!(t0, t5);
+        assert_ne!(t4, t5);
     }
 
     #[test]
