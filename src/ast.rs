@@ -13,7 +13,7 @@
 //! The AST is produced by the parser/grammer defined in `grammer.lalrpop`.
 //!
 #[allow(unused_imports)]
-use crate::types::{BigRat, FromPrimitive, One};
+use crate::types::{Integer, Rational};
 use std::fmt;
 
 #[derive(Clone, Debug)]
@@ -171,20 +171,20 @@ impl Eq for Atom {}
 #[derive(Clone, Debug)]
 pub enum Term {
     /// non-negative integer literal
-    Num(BigRat),
+    Num(Rational),
     /// numerical variable
-    ScalarVar(BigRat, Var),
+    ScalarVar(Rational, Var),
     /// t1 + t2
     Add(Box<Term>, Box<Term>),
 }
 
 /// Implement smart constructors
 impl Term {
-    pub fn num(x: impl Into<BigRat>) -> Self {
+    pub fn num(x: impl Into<Rational>) -> Self {
         Term::Num(x.into())
     }
 
-    pub fn scalar_var(s: BigRat, name: &str) -> Self {
+    pub fn scalar_var(s: Rational, name: &str) -> Self {
         Term::ScalarVar(s, Var::new(name))
     }
 
@@ -255,20 +255,20 @@ mod test {
 
     #[test]
     fn term_eq() {
-        let t0 = Term::num(BigRat::from_i64(0).unwrap());
-        let t1 = Term::num(BigRat::from_i64(1).unwrap());
-        let t2 = Term::num(BigRat::from_i64(2).unwrap());
+        let t0 = Term::num(Rational::from(0));
+        let t1 = Term::num(Rational::from(1));
+        let t2 = Term::num(Rational::from(2));
 
         assert_eq!(t0, t0);
         assert!(t0 != t1);
         assert!(t0 != t2);
 
-        let t4 = Term::scalar_var(BigRat::one(), "x"); // x
+        let t4 = Term::scalar_var(Rational::from(1), "x"); // x
         assert_eq!(t4, t4);
         assert_ne!(t0, t4);
         let t5 = Term::tadd(
-            Term::scalar_var(BigRat::one(), "x"),
-            Term::num(BigRat::from_i64(1).unwrap()),
+            Term::scalar_var(Rational::from(1), "x"),
+            Term::num(Rational::from(1)),
         ); // x + 1
         assert_eq!(t5, t5);
         assert_ne!(t0, t5);
@@ -277,7 +277,7 @@ mod test {
 
     #[test]
     fn atom_eq() {
-        let zero = Term::num(BigRat::from_i64(0).unwrap());
+        let zero = Term::num(Rational::from(0));
         let a1 = Atom::truth(true);
         let a2 = Atom::truth(false);
         let a3 = Atom::var("P");

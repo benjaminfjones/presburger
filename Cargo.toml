@@ -8,9 +8,7 @@ edition = "2024"
 lalrpop = "^0.22"
 lalrpop-util = "^0.22"
 proptest = "^1.6"
-num-bigint = "^0.4"
-num-rational = "^0.4"
-num-traits = "^0.2"
+dashu = "0.4.2"
 
 [build-dependencies]
 lalrpop = "^0.22"

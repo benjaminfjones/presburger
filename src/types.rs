@@ -1,6 +1,3 @@
-pub use num_bigint::{self, BigInt};
-pub use num_rational::{self, Ratio};
-pub use num_traits::{FromPrimitive, One};
-
+pub use dashu::{Integer, Rational};
+pub use dashu::{ibig, rbig};
 pub type Coeff = i64;
-pub type BigRat = Ratio<BigInt>;

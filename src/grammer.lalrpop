@@ -1,5 +1,5 @@
-use std::str::FromStr;  // copied verbatim into generated parser .rs file
-use presburger::types::{BigRat, One};
+use lalrpop_util::ParseError;
+use presburger::types::{Integer, Rational};
 use presburger::ast::{Atom, Formula, Term, Var};
 
 grammar;
@@ -9,25 +9,32 @@ grammar;
 ////////////////////////////////////////////////////////////
 
 /// Integer literal
-Num: i64 = <s:r"-?[0-9]+"> => i64::from_str(s).unwrap();
+Int: Integer = <s:r"-?[0-9]+"> =>?
+    Integer::from_str_radix(s, 10).map_err(
+        |_| ParseError::User { error: "failed to parse integer" }
+        // can't do this, the error message has to be `&'static str`
+        // |e| ParseError::User { error: format!("Cannot parse {}. Original error: {}.", s, e) }
+    );
 
 /// Rational literal
-Rat: BigRat = <n: Num> "/" <d: Num> => BigRat::new(n.into(), d.into());
+Rat: Rational = <n: Int> "/" <d: Int> => Rational::from_parts_signed(n, d);
 
 /// valid numerical variable names start with a lowercase letter
 Var: Var = <s:r"[a-z][a-zA-Z0-9]*"> => Var(String::from(s));
 
 /// Atomic term
 AtomicTerm: Term = {
-    <a:Num> <v:Var> => Term::ScalarVar(BigRat::from_integer(a.into()), v),
+    // TODO: replace this juxtaposition foolishness with `*`
+    <a:Int> <v:Var> => Term::ScalarVar(Rational::from(a), v),
     <r:Rat> <v:Var> => Term::ScalarVar(r, v),
-    <v:Var> => Term::ScalarVar(BigRat::one(), v),
-    <n:Num> => Term::Num(BigRat::from_integer(n.into())),
+    <v:Var> => Term::ScalarVar(Rational::from(1), v),
+    <n:Int> => Term::Num(Rational::from(n)),
     <r:Rat> => Term::Num(r),
     "(" <t:Term> ")" => t,
 };
 
 pub Term: Term  = {
+    // Atomic terms may only be added. There is no subtraction.
     <a:Term> "+" <b:AtomicTerm> => Term::Add(Box::new(a), Box::new(b)),
     <t:AtomicTerm> => t,
 }

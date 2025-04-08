@@ -3,6 +3,8 @@ extern crate lalrpop_util;
 
 #[cfg(test)]
 mod test_parser {
+    use presburger::ast::Term;
+    use presburger::types::rbig;
 
     lalrpop_mod!(
         #[allow(clippy::all)]
@@ -93,5 +95,16 @@ mod test_parser {
         }
         // negative tests
         assert!(grammer::FormulaParser::new().parse("5 ==> x").is_err());
+    }
+
+    #[test]
+    fn parse_big_rat() {
+        let big_rat_good = "922337203685477580700 / 3"; // numerator is 100 * i64::MAX
+        assert_eq!(
+            grammer::TermParser::new().parse(big_rat_good),
+            Ok(Term::Num(rbig!(922337203685477580700 / 3)))
+        );
+
+        // TODO: add negative parse_big_rat tests
     }
 }
