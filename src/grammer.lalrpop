@@ -5,10 +5,26 @@ use presburger::ast::{Atom, Formula, Term, Var};
 grammar;
 
 ////////////////////////////////////////////////////////////
-// Numerical terms
+// Arithmetic Expressions
+//
+// relation = sum rel_op sum
+//
+// sum = monomial "+" sum | monomial
+// monomimal = constant "*" variable | constant
+//
+// constant = "(" constant ")" | rational
+// rational = fraction | int
+// fraction = int_literal "/" int_literal
+// int = <s:r"-?[0-9]+">
+//
+// var = "(" var ")" | var_name
+// var_name = <s:r"[a-z][a-zA-Z0-9]*">
+//
+// rel_op = "=" | "<="
+//
 ////////////////////////////////////////////////////////////
 
-/// Integer literal
+/// Bare Integer literal
 Int: Integer = <s:r"-?[0-9]+"> =>?
     Integer::from_str_radix(s, 10).map_err(
         |_| ParseError::User { error: "failed to parse integer" }
@@ -16,27 +32,33 @@ Int: Integer = <s:r"-?[0-9]+"> =>?
         // |e| ParseError::User { error: format!("Cannot parse {}. Original error: {}.", s, e) }
     );
 
-/// Rational literal
-Rat: Rational = <n: Int> "/" <d: Int> => Rational::from_parts_signed(n, d);
+/// Integer fraction
+Fraction: Rational = <n: Int> "/" <d: Int> => Rational::from_parts_signed(n, d);
 
-/// valid numerical variable names start with a lowercase letter
-Var: Var = <s:r"[a-z][a-zA-Z0-9]*"> => Var(String::from(s));
+Rat: Rational = {
+    <x:Int> => Rational::from(x),
+    <x:Fraction> => x,
+}
 
-/// Atomic term
-AtomicTerm: Term = {
-    // TODO: replace this juxtaposition foolishness with `*`
-    <a:Int> <v:Var> => Term::ScalarVar(Rational::from(a), v),
-    <r:Rat> <v:Var> => Term::ScalarVar(r, v),
+Constant: Rational = { "(" <c:Constant> ")" => c, <r:Rat> => r }
+
+/// Valid arithmetic variable names start with a __lowercase__ letter
+VarName: String = <s:r"[a-z][a-zA-Z0-9]*"> => String::from(s);
+Var: Var = { "(" <v:Var> ")" => v, <n:VarName> => Var(n), }
+
+/// Monomial
+Monomial: Term = {
+    <c:Constant> "*" <v:Var> => Term::ScalarVar(c, v),
+    <c:Constant> => Term::Num(c),
     <v:Var> => Term::ScalarVar(Rational::from(1), v),
-    <n:Int> => Term::Num(Rational::from(n)),
-    <r:Rat> => Term::Num(r),
-    "(" <t:Term> ")" => t,
 };
 
-pub Term: Term  = {
+/// Sum of linear monomials
+pub Sum: Term  = {
     // Atomic terms may only be added. There is no subtraction.
-    <a:Term> "+" <b:AtomicTerm> => Term::Add(Box::new(a), Box::new(b)),
-    <t:AtomicTerm> => t,
+    // Note: this produces a right biased Term tree
+    <m:Monomial> "+" <s:Sum> => Term::Add(Box::new(m), Box::new(s)),
+    <m:Monomial> => m,
 }
 
 
@@ -58,8 +80,8 @@ pub Atom: Atom = {
     "@T" => Atom::TruthValue(true),
     "@F" => Atom::TruthValue(false),
     <v:LogicalVar> => Atom::LogicalVar(v),
-    <t1:Term> "=" <t2:Term> => Atom::Equality(Box::new(t1), Box::new(t2)),
-    <t1:Term> "<=" <t2:Term> => Atom::LessEq(Box::new(t1), Box::new(t2)),
+    <t1:Sum> "=" <t2:Sum> => Atom::Equality(Box::new(t1), Box::new(t2)),
+    <t1:Sum> "<=" <t2:Sum> => Atom::LessEq(Box::new(t1), Box::new(t2)),
 }
 
 pub Formula: Formula = {
