@@ -18,8 +18,8 @@ fn main() {
         .expect("input failed!");
 
     let p1 = grammer::FormulaParser::new().parse(&raw_input).unwrap();
-    println!("p1: {:?}", p1);
+    println!("p1: {p1:?}");
 
     let p2 = nnf::to_nnf(p1);
-    println!("{:?}", p2);
+    println!("{p2:?}");
 }

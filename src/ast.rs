@@ -75,7 +75,7 @@ impl Formula {
 impl fmt::Display for Formula {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Formula::Not(x) => write!(f, "~{}", x),
+            Formula::Not(x) => write!(f, "~{x}"),
             Formula::And(p, q) => write!(f, "({} /\\ {})", *p, *q),
             Formula::Or(p, q) => write!(f, "({} \\/ {})", *p, *q),
             Formula::Impl(p, q) => write!(f, "({} ==> {})", *p, *q),
@@ -140,8 +140,8 @@ impl Atom {
 impl fmt::Display for Atom {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Atom::TruthValue(x) => write!(f, "{}", x),
-            Atom::LogicalVar(x) => write!(f, "{}", x),
+            Atom::TruthValue(x) => write!(f, "{x}"),
+            Atom::LogicalVar(x) => write!(f, "{x}"),
             Atom::Equality(a, b) => write!(f, "{} == {}", *a, *b),
             Atom::LessEq(a, b) => write!(f, "{} <= {}", *a, *b),
         }
@@ -197,8 +197,8 @@ impl Term {
 impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Term::Num(x) => write!(f, "{}", x),
-            Term::ScalarVar(a, x) => write!(f, "{} {}", a, x),
+            Term::Num(x) => write!(f, "{x}"),
+            Term::ScalarVar(a, x) => write!(f, "{a} {x}"),
             Term::Add(a, b) => write!(f, "({} + {})", *a, *b),
         }
     }
