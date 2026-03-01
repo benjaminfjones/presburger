@@ -1,7 +1,7 @@
 //! Linear relations
 
 use crate::lin_expr::{LinExpr, LinExprError};
-use crate::types::Coeff;
+use crate::types::Rational;
 use std::fmt;
 
 /// Special representation for `LinExp == 0`
@@ -19,7 +19,7 @@ impl LinEq {
         LinEq(e)
     }
 
-    pub fn from_coeffs(coeffs: &[Coeff]) -> Result<Self, LinExprError> {
+    pub fn from_coeffs(coeffs: Vec<impl Into<Rational>>) -> Result<Self, LinExprError> {
         Ok(LinEq(LinExpr::new(coeffs)?))
     }
 
@@ -27,11 +27,11 @@ impl LinEq {
         self.0.nvars()
     }
 
-    pub fn coeffs(&self) -> &[Coeff] {
+    pub fn coeffs(&self) -> &[Rational] {
         self.0.coeffs()
     }
 
-    pub fn const_(&self) -> Coeff {
+    pub fn const_(&self) -> &Rational {
         self.0.const_()
     }
 
@@ -47,7 +47,7 @@ impl LinEq {
         self.0
             .coeffs()
             .iter()
-            .position(|&c| c == 1 || c == -1)
+            .position(|c| c == &Rational::ONE || c == &Rational::from(-1))
             .map(|i| i + 1)
     }
 
@@ -56,9 +56,9 @@ impl LinEq {
     /// Returns `false` for variable indexes that are out of bounds.
     pub fn is_subs_for(&self, i: usize) -> bool {
         if let Ok(c) = self.0.coeff(i) {
-            c == 1 || c == -1
+            *c == Rational::ONE || *c == -Rational::ONE
         } else {
-            return false;
+            false
         }
     }
 
@@ -79,10 +79,10 @@ impl LinEq {
     /// # use presburger::lin_expr::*;
     /// # use presburger::lin_rel::*;
     /// # fn main () -> Result<(), LinExprError> {
-    /// let eq = LinEq::new(LinExpr::new(&vec![0, 3, 4, 0])?);
-    /// let other = LinEq::new(LinExpr::new(&vec![0, -3, 1, 2])?);
+    /// let eq = LinEq::new(LinExpr::new(vec![0, 3, 4, 0])?);
+    /// let other = LinEq::new(LinExpr::new(vec![0, -3, 1, 2])?);
     /// let res = eq.subs(2, &other)?;
-    /// assert_eq!(res, LinEq::new(LinExpr::new(&vec![0, 15, 0, -8])?));
+    /// assert_eq!(res, LinEq::new(LinExpr::new(vec![0, 15, 0, -8])?));
     /// # Ok(())
     /// # }
     /// ```
@@ -92,7 +92,11 @@ impl LinEq {
         debug_assert!(n == other.0.nvars());
         // if coeff is 1, subtract other's coeffs from self
         // else if coeff is -1, add other's coeffs to self
-        let m = if other.0.coeff(i)? == 1 { -1 } else { 1 };
+        let m = if other.0.coeff(i)? == &Rational::ONE {
+            -Rational::ONE
+        } else {
+            Rational::ONE
+        };
         // Safe b/c nvars other == nvars self and we know other variable i is valid
         let se_coeff = self.0.coeff_unchecked(i);
 
@@ -100,11 +104,11 @@ impl LinEq {
         for j in 1..=n {
             new_lhs.set_coeff_unchecked(
                 j,
-                self.0.coeff_unchecked(j) + m * other.0.coeff_unchecked(j) * se_coeff,
+                self.0.coeff_unchecked(j) + m.clone() * other.0.coeff_unchecked(j) * se_coeff,
             );
         }
         new_lhs.set_const(self.0.const_() + m * other.0.const_() * se_coeff);
-        return Ok(LinEq(new_lhs));
+        Ok(LinEq(new_lhs))
     }
 }
 
@@ -134,11 +138,11 @@ impl LinRel {
         self.lhs.nvars()
     }
 
-    pub fn coeffs(&self) -> &[Coeff] {
+    pub fn coeffs(&self) -> &[Rational] {
         self.lhs.coeffs()
     }
 
-    pub fn const_(&self) -> Coeff {
+    pub fn const_(&self) -> &Rational {
         self.lhs.const_()
     }
 
@@ -161,7 +165,8 @@ mod tests {
 
     #[test]
     fn lin_eq_basic_api() {
-        let eq1 = LinEq::new(LinExpr::new(&[0, 1, 2]).expect("failed to create linear expression"));
+        let eq1 =
+            LinEq::new(LinExpr::new(vec![0, 1, 2]).expect("failed to create linear expression"));
         assert_eq!(eq1.nvars(), 2);
         assert_eq!(eq1.is_subs(), Some(1));
         assert!(eq1.is_subs_for(1)); // subs: coeff of x_1 is 1
@@ -174,15 +179,16 @@ mod tests {
     // then substituting for `x_2 = 3 x_1` produces `15 x_1 = 0`
     #[test]
     fn lin_eq_subs_2() {
-        let eq1 = LinEq::new(LinExpr::new(&[0, 3, 4]).expect("failed to create linear expression"));
+        let eq1 =
+            LinEq::new(LinExpr::new(vec![0, 3, 4]).expect("failed to create linear expression"));
         let eq2 =
-            LinEq::new(LinExpr::new(&[0, -3, 1]).expect("failed to create linear expression"));
+            LinEq::new(LinExpr::new(vec![0, -3, 1]).expect("failed to create linear expression"));
         assert_eq!(eq1.nvars(), 2);
         assert_eq!(eq2.nvars(), 2);
         let eq3 = eq1.subs(2, &eq2).expect("subs failed");
         assert_eq!(eq3.nvars(), 2);
-        assert_eq!(eq3.coeffs(), &[15, 0]);
-        assert_eq!(eq3.const_(), 0);
+        assert_eq!(eq3.coeffs(), &[Rational::from(15), Rational::ZERO]);
+        assert_eq!(eq3.const_(), &Rational::from(0));
         assert!(!eq3.lhs().supported(2));
         // eq1 was moved: assert_eq!(eq1.nvars(), 2);
     }
@@ -196,12 +202,12 @@ mod tests {
     // ==> 15 x_1 - 8 x_3 = 0.
     #[test]
     fn lin_eq_subs_3() {
-        let eq1 = LinEq::from_coeffs(&[0, 3, 4, 0]).expect("failed to create linear equality");
-        let eq2 = LinEq::from_coeffs(&[0, -3, 1, 2]).expect("failed to create linear equality");
+        let eq1 = LinEq::from_coeffs(vec![0, 3, 4, 0]).expect("failed to create linear equality");
+        let eq2 = LinEq::from_coeffs(vec![0, -3, 1, 2]).expect("failed to create linear equality");
         let eq3 = eq1.subs(2, &eq2).expect("subs failed");
         assert_eq!(eq3.nvars(), 3);
-        assert_eq!(eq3.coeffs(), &[15, 0, -8]);
-        assert_eq!(eq3.const_(), 0);
+        assert_eq!(eq3.coeffs(), &[15.into(), 0.into(), Rational::from(-8)]);
+        assert_eq!(eq3.const_(), &Rational::ZERO);
         assert!(!eq3.lhs().supported(2));
     }
 
@@ -212,11 +218,11 @@ mod tests {
     // Using other to substitute for x_1 in self leaves 20 + 8 x_2 = 0
     #[test]
     fn lin_eq_subs_const() {
-        let eq1 = LinEq::from_coeffs(&[-1, 3, 5]).expect("failed to create linear equality");
-        let eq2 = LinEq::from_coeffs(&[7, -1, 1]).expect("failed to create linear equality");
+        let eq1 = LinEq::from_coeffs(vec![-1, 3, 5]).expect("failed to create linear equality");
+        let eq2 = LinEq::from_coeffs(vec![7, -1, 1]).expect("failed to create linear equality");
         let eq3 = eq1.subs(1, &eq2).expect("subs failed");
-        assert_eq!(eq3.coeffs(), &[0, 8]);
-        assert_eq!(eq3.const_(), 20);
+        assert_eq!(eq3.coeffs(), &[0.into(), 8.into()]);
+        assert_eq!(eq3.const_(), &Rational::from(20));
         assert!(!eq3.lhs().supported(1));
         assert!(eq3.lhs().supported(2));
     }
