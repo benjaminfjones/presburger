@@ -1,4 +1,4 @@
-//! Implementation of affine linear expressions and equality/inequality relations
+//! Implementation of affine linear expressions: b + \sum_i^n a_i x_i
 
 use crate::types::Rational;
 use std::cmp::Ordering;
