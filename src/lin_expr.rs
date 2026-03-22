@@ -45,7 +45,7 @@ impl Error for LinExprError {}
 /// or...
 ///
 /// b + \sum_{i=1}^{n} a_i x_i \le 0
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LinExpr {
     // Coeffs vector. The 0th element corresponds to the value of the
     // constant term; this is always present, but its value may be 0.
