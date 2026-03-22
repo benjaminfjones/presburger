@@ -4,7 +4,7 @@ use crate::lin_expr::{LinExpr, LinExprError};
 use crate::types::Rational;
 use std::fmt;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Constraint {
     /// Equality
     Eq,
@@ -25,7 +25,7 @@ impl fmt::Display for Constraint {
 /// Represents `LinExpr rel 0` where `rel` can be any (in)equality
 ///
 /// Note that the derived equality is only structural, not mathematical equality.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct LinRel {
     lhs: LinExpr,
     constraint: Constraint,
@@ -75,7 +75,29 @@ impl LinRel {
     /// An equality is a possible substitution iff. some coeff == +-1.
     /// Return the position of the first substitution coefficient, or None.
     ///
-    /// TODO: generalize all the subs methods to rationals
+    /// # Examples
+    ///
+    /// Positive test: x_1 + 2 x_2 = 0 is a substitution (first non-zero coefficient at position 1)
+    /// ```
+    /// # use presburger::lin_expr::*;
+    /// # use presburger::lin_rel::*;
+    /// # fn main() -> Result<(), LinExprError> {
+    /// let eq = LinRel::mk_eq(LinExpr::new(vec![0, 1, 2])?);
+    /// assert_eq!(eq.is_subs(), Some(1));
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// Negative test: 0 = 0 is not a substitution (all coefficients are zero)
+    /// ```
+    /// # use presburger::lin_expr::*;
+    /// # use presburger::lin_rel::*;
+    /// # fn main() -> Result<(), LinExprError> {
+    /// let eq = LinRel::mk_eq(LinExpr::new(vec![0, 0, 0])?);
+    /// assert_eq!(eq.is_subs(), None);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn is_subs(&self) -> Option<usize> {
         if self.constraint != Constraint::Eq {
             return None;
@@ -90,6 +112,30 @@ impl LinRel {
     /// An equality is a possible substitution for x_i iff. coeff(x_i) != 0
     ///
     /// Returns `false` for variable indexes that are out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// Positive test: x_1 + 2 x_2 = 0 is a substitution for x_1
+    /// ```
+    /// # use presburger::lin_expr::*;
+    /// # use presburger::lin_rel::*;
+    /// # fn main() -> Result<(), LinExprError> {
+    /// let eq = LinRel::mk_eq(LinExpr::new(vec![0, 1, 2])?);
+    /// assert!(eq.is_subs_for(1));
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// Negative test: x_1 + 2 x_2 = 0 is not a substitution for x_3 (coefficient is 0)
+    /// ```
+    /// # use presburger::lin_expr::*;
+    /// # use presburger::lin_rel::*;
+    /// # fn main() -> Result<(), LinExprError> {
+    /// let eq = LinRel::mk_eq(LinExpr::new(vec![0, 1, 2])?);
+    /// assert!(!eq.is_subs_for(3));
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn is_subs_for(&self, i: usize) -> bool {
         if self.constraint != Constraint::Eq {
             return false;
