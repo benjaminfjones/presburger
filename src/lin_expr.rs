@@ -226,6 +226,16 @@ impl LinExpr {
             false
         }
     }
+
+    /// Check if the expression is equivalent to zero (all coefficients and constant are zero)
+    pub fn is_zero(&self) -> bool {
+        self.const_().is_zero() && self.coeffs().iter().all(|c| c.is_zero())
+    }
+
+    /// Check if the expression is a constant (all coefficients are zero)
+    pub fn is_const(&self) -> bool {
+        self.coeffs().iter().all(|c| c.is_zero())
+    }
 }
 
 #[cfg(test)]
@@ -267,5 +277,61 @@ mod test_expr_support {
         assert_eq!(e2.const_(), &0.into());
         assert_eq!(e2.coeff(1).unwrap(), &Rational::from(-1));
         assert!(e2.supported(1));
+    }
+
+    #[test]
+    fn test_is_zero() {
+        // Zero expression: 0 = 0
+        let zero_expr = LinExpr::new(vec![0, 0, 0]).expect("failed to create zero expression");
+        assert!(zero_expr.is_zero());
+        assert!(zero_expr.is_const());
+        assert_eq!(zero_expr.const_(), &0.into());
+        assert_eq!(zero_expr.coeff(1).unwrap(), &0.into());
+        assert_eq!(zero_expr.coeff(2).unwrap(), &0.into());
+
+        // Non-zero constant: 5 = 0
+        let const_expr = LinExpr::new(vec![5, 0, 0]).expect("failed to create constant expression");
+        assert!(!const_expr.is_zero());
+        assert!(const_expr.is_const());
+        assert_eq!(const_expr.const_(), &5.into());
+
+        // Non-zero coefficient: x_1 = 0
+        let var_expr = LinExpr::new(vec![0, 1, 0]).expect("failed to create variable expression");
+        assert!(!var_expr.is_zero());
+        assert!(!var_expr.is_const());
+        assert_eq!(var_expr.coeff(1).unwrap(), &1.into());
+
+        // Mixed expression: 3 + 2x_1 - x_2 = 0
+        let mixed_expr = LinExpr::new(vec![3, 2, -1]).expect("failed to create mixed expression");
+        assert!(!mixed_expr.is_zero());
+        assert!(!mixed_expr.is_const());
+        assert_eq!(mixed_expr.const_(), &3.into());
+        assert_eq!(mixed_expr.coeff(1).unwrap(), &2.into());
+        assert_eq!(mixed_expr.coeff(2).unwrap(), &Rational::from(-1));
+    }
+
+    #[test]
+    fn test_is_const() {
+        // Zero is a constant
+        let zero_expr = LinExpr::new(vec![0, 0, 0]).expect("failed to create zero expression");
+        assert!(zero_expr.is_const());
+        assert!(zero_expr.is_zero());
+
+        // Pure constant: 42 = 0
+        let const_expr =
+            LinExpr::new(vec![42, 0, 0]).expect("failed to create constant expression");
+        assert!(const_expr.is_const());
+        assert!(!const_expr.is_zero());
+        assert_eq!(const_expr.const_(), &42.into());
+
+        // Expression with variables is not constant
+        let var_expr = LinExpr::new(vec![0, 1, 2]).expect("failed to create variable expression");
+        assert!(!var_expr.is_const());
+        assert!(!var_expr.is_zero());
+
+        // Expression with some zero coefficients but one non-zero
+        let mixed_expr = LinExpr::new(vec![5, 0, 0, 3]).expect("failed to create mixed expression");
+        assert!(!mixed_expr.is_const());
+        assert!(!mixed_expr.is_zero());
     }
 }
