@@ -196,6 +196,28 @@ impl LinRel {
             constraint: self.constraint,
         })
     }
+
+    /// Determine if `self` is a trivially true (in)equality between constants,
+    /// e.g. 0 = 0, or -1 <= 0
+    pub fn is_trivial(&self) -> bool {
+        let coeffs_zero = self.lhs.coeffs().iter().all(|c| c.is_zero());
+        coeffs_zero
+            && match self.constraint {
+                Constraint::Eq => self.const_().is_zero(),
+                Constraint::Le => self.const_() <= &Rational::ZERO,
+            }
+    }
+
+    /// Determine if `self` is a trivially false (in)equality between constants,
+    /// e.g. 1 = 0, or 2 <= 0
+    pub fn is_trivial_contradiction(&self) -> bool {
+        let coeffs_zero = self.lhs.coeffs().iter().all(|c| c.is_zero());
+        coeffs_zero
+            && match self.constraint {
+                Constraint::Eq => !self.const_().is_zero(),
+                Constraint::Le => self.const_() > &Rational::ZERO,
+            }
+    }
 }
 
 #[cfg(test)]
@@ -270,5 +292,73 @@ mod tests {
         assert_eq!(eq3.const_(), &Rational::from(20));
         assert!(!eq3.lhs().supported(1));
         assert!(eq3.lhs().supported(2));
+    }
+
+    #[test]
+    fn test_is_trivial() {
+        // Positive test: 0 = 0 is trivial (equality)
+        let trivial_eq = LinRel::mk_eq(LinExpr::new(vec![0, 0, 0]).unwrap());
+        assert!(trivial_eq.is_trivial());
+
+        // Positive test: -1 <= 0 is trivial (inequality)
+        let trivial_le = LinRel::mk_le(LinExpr::new(vec![-1, 0, 0]).unwrap());
+        assert!(trivial_le.is_trivial());
+
+        // Positive test: 0 <= 0 is trivial (inequality)
+        let trivial_le_zero = LinRel::mk_le(LinExpr::new(vec![0, 0, 0]).unwrap());
+        assert!(trivial_le_zero.is_trivial());
+
+        // Negative test: x1 = 0 is not trivial (has variables)
+        let non_trivial_eq = LinRel::mk_eq(LinExpr::new(vec![0, 1, 0]).unwrap());
+        assert!(!non_trivial_eq.is_trivial());
+
+        // Negative test: x1 + x2 <= 0 is not trivial (has variables)
+        let non_trivial_le = LinRel::mk_le(LinExpr::new(vec![0, 1, 1]).unwrap());
+        assert!(!non_trivial_le.is_trivial());
+
+        // Negative test: 1 = 0 is not trivial (it's a contradiction)
+        let contradiction_eq = LinRel::mk_eq(LinExpr::new(vec![1, 0, 0]).unwrap());
+        assert!(!contradiction_eq.is_trivial());
+
+        // Negative test: 1 <= 0 is not trivial (it's a contradiction)
+        let contradiction_le = LinRel::mk_le(LinExpr::new(vec![1, 0, 0]).unwrap());
+        assert!(!contradiction_le.is_trivial());
+    }
+
+    #[test]
+    fn test_is_trivial_contradiction() {
+        // Positive test: 1 = 0 is a contradiction (equality)
+        let contradiction_eq = LinRel::mk_eq(LinExpr::new(vec![1, 0, 0]).unwrap());
+        assert!(contradiction_eq.is_trivial_contradiction());
+
+        // Positive test: 2 <= 0 is a contradiction (inequality)
+        let contradiction_le = LinRel::mk_le(LinExpr::new(vec![2, 0, 0]).unwrap());
+        assert!(contradiction_le.is_trivial_contradiction());
+
+        // Positive test: 0.5 <= 0 is a contradiction (inequality)
+        let half = Rational::from(1) / Rational::from(2);
+        let contradiction_le_half =
+            LinRel::mk_le(LinExpr::new(vec![half, Rational::from(0), Rational::from(0)]).unwrap());
+        assert!(contradiction_le_half.is_trivial_contradiction());
+
+        // Negative test: 0 = 0 is not a contradiction (it's trivial)
+        let trivial_eq = LinRel::mk_eq(LinExpr::new(vec![0, 0, 0]).unwrap());
+        assert!(!trivial_eq.is_trivial_contradiction());
+
+        // Negative test: -1 <= 0 is not a contradiction (it's trivial)
+        let trivial_le = LinRel::mk_le(LinExpr::new(vec![-1, 0, 0]).unwrap());
+        assert!(!trivial_le.is_trivial_contradiction());
+
+        // Negative test: x1 = 0 is not a contradiction (has variables)
+        let non_contradiction_eq = LinRel::mk_eq(LinExpr::new(vec![0, 1, 0]).unwrap());
+        assert!(!non_contradiction_eq.is_trivial_contradiction());
+
+        // Negative test: x1 + x2 <= 0 is not a contradiction (has variables)
+        let non_contradiction_le = LinRel::mk_le(LinExpr::new(vec![0, 1, 1]).unwrap());
+        assert!(!non_contradiction_le.is_trivial_contradiction());
+
+        // Negative test: 0 <= 0 is not a contradiction (it's trivial)
+        let trivial_le_zero = LinRel::mk_le(LinExpr::new(vec![0, 0, 0]).unwrap());
+        assert!(!trivial_le_zero.is_trivial_contradiction());
     }
 }
