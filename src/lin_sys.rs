@@ -8,6 +8,12 @@ pub struct LinSys {
     relations: Vec<LinRel>,
 }
 
+impl Default for LinSys {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LinSys {
     /// Create a new empty linear system
     pub fn new() -> Self {
