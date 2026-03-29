@@ -266,8 +266,10 @@ mod tests {
 
         // The remaining relation should be x1 + x2 <= 0
         let remaining = system.relations()[0].clone();
-        assert_eq!(remaining.coeffs(), &[Rational::from(1), Rational::from(1)]);
-        assert_eq!(remaining.const_(), &Rational::ZERO);
+        assert_eq!(
+            remaining,
+            LinRel::mk_le(LinExpr::new(vec![0, 1, 1]).unwrap())
+        );
     }
 
     #[test]
@@ -289,11 +291,15 @@ mod tests {
 
         // The first remaining relation should be 2 <= 0
         let remaining = system.relations()[0].clone();
-        assert_eq!(remaining.coeffs(), &[Rational::ZERO, Rational::ZERO]);
-        assert_eq!(remaining.const_(), &Rational::from(2));
+        assert_eq!(
+            remaining,
+            LinRel::mk_le(LinExpr::new(vec![2, 0, 0]).unwrap())
+        );
         // The remaining relation should be x1 + x2 <= 0
         let remaining = system.relations()[1].clone();
-        assert_eq!(remaining.coeffs(), &[Rational::from(1), Rational::from(1)]);
-        assert_eq!(remaining.const_(), &Rational::ZERO);
+        assert_eq!(
+            remaining,
+            LinRel::mk_le(LinExpr::new(vec![0, 1, 1]).unwrap())
+        );
     }
 }
