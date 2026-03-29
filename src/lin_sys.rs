@@ -88,7 +88,7 @@ impl LinSys {
     /// Call `reduce_eqs()` repeatedly until no more equality reductions are possible.
     /// If equalities still remain they are guaranteed to be equalities between constants.
     pub fn eliminate_eqs(&mut self) {
-        todo!()
+        while self.reduce_eqs() {}
     }
 }
 
@@ -207,5 +207,30 @@ mod tests {
         let reduced = system.reduce_eqs();
         assert!(!reduced);
         assert_eq!(system.len(), 2); // No relations removed
+    }
+
+    #[test]
+    fn test_eliminate_eqs() {
+        // Test case: x1 + 3x3 = 0, 1 + 2x2 = 0, and 3x1 + 4x2 <= 0
+        // first reduction:  x1 = -3x3 => 1 + 2x2 = 0, 4x2 + (-9)x3 <= 0
+        // second reduction: x2 = -1/2 => -2 + (-9)x3 <= 0
+
+        let mut system = LinSys::from_relations(vec![
+            LinRel::mk_eq(LinExpr::new(vec![0, 1, 0, 3]).unwrap()),
+            LinRel::mk_eq(LinExpr::new(vec![1, 0, 2, 0]).unwrap()),
+            LinRel::mk_le(LinExpr::new(vec![0, 3, 4, 0]).unwrap()),
+        ]);
+
+        system.eliminate_eqs();
+
+        assert_eq!(system.relations().len(), 1);
+
+        // The remaining relation should be -2 + (-9)x3 <= 0 after elimination
+        let remaining = system.relations()[0].clone();
+        assert_eq!(
+            remaining.coeffs(),
+            &[Rational::ZERO, Rational::ZERO, Rational::from(-9)]
+        );
+        assert_eq!(remaining.const_(), &Rational::from(-2));
     }
 }

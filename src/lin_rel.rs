@@ -179,14 +179,7 @@ impl LinRel {
         let n = self.nvars();
         debug_assert!(n == self.lhs.nvars());
         debug_assert!(n == other.lhs.nvars());
-        // if coeff is 1, subtract other's coeffs from self
-        // else if coeff is -1, add other's coeffs to self
         let m = -Rational::ONE / other.lhs.coeff(i)?.clone();
-        // let m = if other.lhs.coeff(i)? == &Rational::ONE {
-        //     -Rational::ONE
-        // } else {
-        //     Rational::ONE
-        // };
         // Safe b/c nvars other == nvars self and we know other variable i is valid
         let se_coeff = self.lhs.coeff_unchecked(i);
 
