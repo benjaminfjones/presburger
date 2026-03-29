@@ -111,6 +111,12 @@ impl LinSys {
             }
         }
     }
+
+    /// Determine if `self` contains a trivial contradiction between constants, e.g. 1 = 0, or
+    /// 2 <= 0.
+    pub fn has_trivial_contradiction(&self) -> bool {
+        self.relations.iter().any(|r| r.is_trivial_contradiction())
+    }
 }
 
 #[cfg(test)]
@@ -242,8 +248,9 @@ mod tests {
             LinRel::mk_le(LinExpr::new(vec![0, 3, 4, 0]).unwrap()),
         ]);
 
+        assert_eq!(system.relations().len(), 3);
         system.eliminate_nontrivial_eqs();
-
+        assert!(!system.has_trivial_contradiction());
         assert_eq!(system.relations().len(), 1);
 
         // The remaining relation should be -2 + (-9)x3 <= 0 after elimination
@@ -265,6 +272,7 @@ mod tests {
         ]);
 
         assert_eq!(system.len(), 2);
+        assert!(!system.has_trivial_contradiction());
 
         system.eliminate_trivial_eqs();
 
@@ -301,6 +309,10 @@ mod tests {
             remaining,
             LinRel::mk_le(LinExpr::new(vec![2, 0, 0]).unwrap())
         );
+
+        // The system still contains a trivial contradiction
+        assert!(system.has_trivial_contradiction());
+
         // The remaining relation should be x1 + x2 <= 0
         let remaining = system.relations()[1].clone();
         assert_eq!(
