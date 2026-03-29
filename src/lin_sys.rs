@@ -87,8 +87,23 @@ impl LinSys {
 
     /// Call `reduce_eqs()` repeatedly until no more equality reductions are possible.
     /// If equalities still remain they are guaranteed to be equalities between constants.
-    pub fn eliminate_eqs(&mut self) {
+    pub fn eliminate_nontrivial_eqs(&mut self) {
         while self.reduce_eqs() {}
+    }
+
+    /// Filter out trivial constant (in)equalities from the system. See `LinRel::is_trivial().`
+    pub fn eliminate_trivial_eqs(&mut self) {
+        loop {
+            let next = self.relations.iter().position(|r| r.is_trivial());
+            match next {
+                None => break,
+                Some(i) => {
+                    // could use `swap_remove` here to be more efficient, but it changes the order
+                    // of elements and makes testing harder
+                    self.relations.remove(i);
+                }
+            }
+        }
     }
 }
 
@@ -210,7 +225,7 @@ mod tests {
     }
 
     #[test]
-    fn test_eliminate_eqs() {
+    fn test_eliminate_nontrivial_eqs() {
         // Test case: x1 + 3x3 = 0, 1 + 2x2 = 0, and 3x1 + 4x2 <= 0
         // first reduction:  x1 = -3x3 => 1 + 2x2 = 0, 4x2 + (-9)x3 <= 0
         // second reduction: x2 = -1/2 => -2 + (-9)x3 <= 0
@@ -221,7 +236,7 @@ mod tests {
             LinRel::mk_le(LinExpr::new(vec![0, 3, 4, 0]).unwrap()),
         ]);
 
-        system.eliminate_eqs();
+        system.eliminate_nontrivial_eqs();
 
         assert_eq!(system.relations().len(), 1);
 
@@ -232,5 +247,53 @@ mod tests {
             &[Rational::ZERO, Rational::ZERO, Rational::from(-9)]
         );
         assert_eq!(remaining.const_(), &Rational::from(-2));
+    }
+
+    #[test]
+    fn test_eliminate_trivial_eqs_single_equality() {
+        // Test case: 0 = 0 (trivial), x1 + x2 <= 0 (non-trivial)
+        // After elimination: only x1 + x2 <= 0 should remain
+        let mut system = LinSys::from_relations(vec![
+            LinRel::mk_eq(LinExpr::new(vec![0, 0, 0]).unwrap()), // 0 = 0 (trivial)
+            LinRel::mk_le(LinExpr::new(vec![0, 1, 1]).unwrap()), // x1 + x2 <= 0 (non-trivial)
+        ]);
+
+        assert_eq!(system.len(), 2);
+
+        system.eliminate_trivial_eqs();
+
+        assert_eq!(system.len(), 1);
+
+        // The remaining relation should be x1 + x2 <= 0
+        let remaining = system.relations()[0].clone();
+        assert_eq!(remaining.coeffs(), &[Rational::from(1), Rational::from(1)]);
+        assert_eq!(remaining.const_(), &Rational::ZERO);
+    }
+
+    #[test]
+    fn test_eliminate_trivial_eqs_both_types() {
+        // Test case: 0 = 0 (trivial equality), -1 <= 0 (trivial inequality), x1 + x2 <= 0 (non-trivial)
+        // After elimination: only x1 + x2 <= 0 should remain
+        let mut system = LinSys::from_relations(vec![
+            LinRel::mk_eq(LinExpr::new(vec![0, 0, 0]).unwrap()), // 0 = 0 (trivial equality)
+            LinRel::mk_le(LinExpr::new(vec![-1, 0, 0]).unwrap()), // -1 <= 0 (trivial inequality)
+            LinRel::mk_le(LinExpr::new(vec![2, 0, 0]).unwrap()), // 2 <= 0 (trivial contradiction)
+            LinRel::mk_le(LinExpr::new(vec![0, 1, 1]).unwrap()), // x1 + x2 <= 0 (non-trivial)
+        ]);
+
+        assert_eq!(system.len(), 4);
+
+        system.eliminate_trivial_eqs();
+
+        assert_eq!(system.len(), 2);
+
+        // The first remaining relation should be 2 <= 0
+        let remaining = system.relations()[0].clone();
+        assert_eq!(remaining.coeffs(), &[Rational::ZERO, Rational::ZERO]);
+        assert_eq!(remaining.const_(), &Rational::from(2));
+        // The remaining relation should be x1 + x2 <= 0
+        let remaining = system.relations()[1].clone();
+        assert_eq!(remaining.coeffs(), &[Rational::from(1), Rational::from(1)]);
+        assert_eq!(remaining.const_(), &Rational::ZERO);
     }
 }
