@@ -54,6 +54,42 @@ impl LinSys {
     pub fn clear(&mut self) {
         self.relations.clear();
     }
+
+    /// Reduce, if possible, the linear system by substituting some eligible equality in the system
+    /// into every relation.
+    ///
+    /// Returns `true` if an equality was eliminated and `false` if there are no further reductions
+    /// possible.
+    pub fn reduce_eqs(&mut self) -> bool {
+        // Find the first equality that can be used for substitution
+        let sub_index = self
+            .relations
+            .iter()
+            .position(|rel| rel.is_subs().is_some());
+
+        if let Some(index) = sub_index {
+            // Get the substitution equality
+            let subs_eq = self.relations.remove(index);
+            let sub_var = subs_eq.is_subs().unwrap();
+
+            // Substitute this equality into all remaining relations
+            for i in 0..self.relations.len() {
+                if let Ok(substituted) = self.relations[i].clone().subs(sub_var, &subs_eq) {
+                    self.relations[i] = substituted;
+                }
+            }
+
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Call `reduce_eqs()` repeatedly until no more equality reductions are possible.
+    /// If equalities still remain they are guaranteed to be equalities between constants.
+    pub fn eliminate_eqs(&mut self) {
+        todo!()
+    }
 }
 
 #[cfg(test)]
@@ -61,6 +97,7 @@ mod tests {
     use super::*;
     use crate::lin_expr::LinExpr;
     use crate::lin_rel::LinRel;
+    use crate::types::Rational;
 
     #[test]
     fn test_new_empty_system() {
@@ -127,5 +164,48 @@ mod tests {
         let removed = system.remove_relation(0);
         assert!(removed.is_some());
         assert_eq!(system.len(), 1);
+    }
+
+    #[test]
+    fn test_reduce_eqs() {
+        // Test case: x1 + 2x2 = 0 and 3x1 + 4x2 <= 0
+        // is_subs() returns position 1 (x1) since it's the first non-zero coefficient
+        // Substituting x1 = -2x2 into 3x1 + 4x2 <= 0 gives -2x2 <= 0
+        let eq1 = LinRel::mk_eq(LinExpr::new(vec![0, 1, 2]).unwrap());
+        let eq2 = LinRel::mk_le(LinExpr::new(vec![0, 3, 4]).unwrap());
+
+        let mut system = LinSys::new();
+        system.add_relation(eq1);
+        system.add_relation(eq2);
+
+        assert_eq!(system.len(), 2);
+
+        // Should be able to reduce (returns true)
+        let reduced = system.reduce_eqs();
+        assert!(reduced);
+        assert_eq!(system.len(), 1);
+
+        // The remaining relation should be -2x2 <= 0 (after substituting x1 = -2x2)
+        let remaining = system.relations()[0].clone();
+        assert_eq!(remaining.coeffs(), &[Rational::ZERO, Rational::from(-2)]);
+        assert_eq!(remaining.const_(), &Rational::ZERO);
+    }
+
+    #[test]
+    fn test_reduce_eqs_no_substitution() {
+        // Test case with no eligible substitutions
+        let eq1 = LinRel::mk_le(LinExpr::new(vec![0, 3, 4]).unwrap());
+        let eq2 = LinRel::mk_le(LinExpr::new(vec![0, 5, 6]).unwrap());
+
+        let mut system = LinSys::new();
+        system.add_relation(eq1);
+        system.add_relation(eq2);
+
+        assert_eq!(system.len(), 2);
+
+        // Should not be able to reduce (returns false)
+        let reduced = system.reduce_eqs();
+        assert!(!reduced);
+        assert_eq!(system.len(), 2); // No relations removed
     }
 }
