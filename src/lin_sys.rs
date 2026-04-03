@@ -214,8 +214,10 @@ mod tests {
 
         // The remaining relation should be -2x2 <= 0 (after substituting x1 = -2x2)
         let remaining = system.relations()[0].clone();
-        assert_eq!(remaining.coeffs(), &[Rational::ZERO, Rational::from(-2)]);
-        assert_eq!(remaining.const_(), &Rational::ZERO);
+        assert_eq!(
+            remaining,
+            LinRel::mk_le(LinExpr::new(vec![0, 0, -2]).unwrap())
+        );
     }
 
     #[test]
@@ -256,10 +258,9 @@ mod tests {
         // The remaining relation should be -2 + (-9)x3 <= 0 after elimination
         let remaining = system.relations()[0].clone();
         assert_eq!(
-            remaining.coeffs(),
-            &[Rational::ZERO, Rational::ZERO, Rational::from(-9)]
+            remaining,
+            LinRel::mk_le(LinExpr::new(vec![-2, 0, 0, -9]).unwrap())
         );
-        assert_eq!(remaining.const_(), &Rational::from(-2));
     }
 
     #[test]
