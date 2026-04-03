@@ -124,7 +124,6 @@ mod tests {
     use super::*;
     use crate::lin_expr::LinExpr;
     use crate::lin_rel::LinRel;
-    use crate::types::Rational;
 
     #[test]
     fn test_new_empty_system() {

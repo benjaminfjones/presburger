@@ -4,6 +4,7 @@ pub mod fme;
 pub mod lin_expr;
 pub mod lin_rel;
 pub mod lin_sys;
+pub mod macros;
 pub mod nnf;
 pub mod sym_mod;
 pub mod types;

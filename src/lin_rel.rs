@@ -257,12 +257,11 @@ impl LinRel {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{eq, le};
 
     #[test]
     fn lin_eq_basic_api() {
-        let eq1 = LinRel::mk_eq(
-            LinExpr::new(vec![0, 1, 2, 0]).expect("failed to create linear equality"),
-        );
+        let eq1 = eq!(0, 1, 2, 0);
         assert_eq!(eq1.nvars(), 3);
         assert_eq!(eq1.is_subs(), Some(1));
         assert!(eq1.is_subs_for(1)); // subs: coeff of x_1 is 1
@@ -276,17 +275,13 @@ mod tests {
     // then substituting for `x_2 = 3 x_1` produces `15 x_1 <= 0`
     #[test]
     fn lin_eq_subs_2() {
-        let slf =
-            LinRel::mk_le(LinExpr::new(vec![0, 3, 4]).expect("failed to create linear expression"));
-        let other = LinRel::mk_eq(
-            LinExpr::new(vec![0, -3, 1]).expect("failed to create linear expression"),
-        );
+        let slf = le!(0, 3, 4);
+        let other = eq!(0, -3, 1);
         assert_eq!(slf.nvars(), 2);
         assert_eq!(other.nvars(), 2);
         let result = slf.subs(2, &other).expect("subs failed");
         assert_eq!(result.nvars(), 2);
-        assert_eq!(result.coeffs(), &[Rational::from(15), Rational::ZERO]);
-        assert_eq!(result.const_(), &Rational::from(0));
+        assert_eq!(result, le!(0, 15, 0));
         assert!(!result.lhs().supported(2));
     }
 
@@ -299,12 +294,8 @@ mod tests {
     // ==> 15 x_1 - 8 x_3 <= 0.
     #[test]
     fn lin_eq_subs_3() {
-        let slf = LinRel::mk_le(
-            LinExpr::new(vec![0, 3, 4, 0]).expect("failed to create linear equality"),
-        );
-        let other = LinRel::mk_eq(
-            LinExpr::new(vec![0, -3, 1, 2]).expect("failed to create linear equality"),
-        );
+        let slf = le!(0, 3, 4, 0);
+        let other = eq!(0, -3, 1, 2);
         let result = slf.subs(2, &other).expect("subs failed");
         assert_eq!(result.nvars(), 3);
         assert_eq!(result.coeffs(), &[15.into(), 0.into(), Rational::from(-8)]);
@@ -319,11 +310,10 @@ mod tests {
     // Using other to substitute for x_1 in self leaves 20 + 8 x_2 = 0
     #[test]
     fn lin_eq_subs_const() {
-        let eq1 = LinRel::mk_eq(LinExpr::new(vec![-1, 3, 5]).unwrap());
-        let eq2 = LinRel::mk_eq(LinExpr::new(vec![7, -1, 1]).unwrap());
+        let eq1 = eq!(-1, 3, 5);
+        let eq2 = eq!(7, -1, 1);
         let eq3 = eq1.subs(1, &eq2).expect("subs failed");
-        assert_eq!(eq3.coeffs(), &[0.into(), 8.into()]);
-        assert_eq!(eq3.const_(), &Rational::from(20));
+        assert_eq!(eq3, eq!(20, 0, 8));
         assert!(!eq3.lhs().supported(1));
         assert!(eq3.lhs().supported(2));
     }
@@ -331,68 +321,67 @@ mod tests {
     #[test]
     fn test_is_trivial() {
         // Positive test: 0 = 0 is trivial (equality)
-        let trivial_eq = LinRel::mk_eq(LinExpr::new(vec![0, 0, 0]).unwrap());
+        let trivial_eq = eq!(0, 0, 0);
         assert!(trivial_eq.is_trivial());
 
         // Positive test: -1 <= 0 is trivial (inequality)
-        let trivial_le = LinRel::mk_le(LinExpr::new(vec![-1, 0, 0]).unwrap());
+        let trivial_le = le!(-1, 0, 0);
         assert!(trivial_le.is_trivial());
 
         // Positive test: 0 <= 0 is trivial (inequality)
-        let trivial_le_zero = LinRel::mk_le(LinExpr::new(vec![0, 0, 0]).unwrap());
+        let trivial_le_zero = le!(0, 0, 0);
         assert!(trivial_le_zero.is_trivial());
 
         // Negative test: x1 = 0 is not trivial (has variables)
-        let non_trivial_eq = LinRel::mk_eq(LinExpr::new(vec![0, 1, 0]).unwrap());
+        let non_trivial_eq = eq!(0, 1, 0);
         assert!(!non_trivial_eq.is_trivial());
 
         // Negative test: x1 + x2 <= 0 is not trivial (has variables)
-        let non_trivial_le = LinRel::mk_le(LinExpr::new(vec![0, 1, 1]).unwrap());
+        let non_trivial_le = le!(0, 1, 1);
         assert!(!non_trivial_le.is_trivial());
 
         // Negative test: 1 = 0 is not trivial (it's a contradiction)
-        let contradiction_eq = LinRel::mk_eq(LinExpr::new(vec![1, 0, 0]).unwrap());
+        let contradiction_eq = eq!(1, 0, 0);
         assert!(!contradiction_eq.is_trivial());
 
         // Negative test: 1 <= 0 is not trivial (it's a contradiction)
-        let contradiction_le = LinRel::mk_le(LinExpr::new(vec![1, 0, 0]).unwrap());
+        let contradiction_le = le!(1, 0, 0);
         assert!(!contradiction_le.is_trivial());
     }
 
     #[test]
     fn test_is_trivial_contradiction() {
         // Positive test: 1 = 0 is a contradiction (equality)
-        let contradiction_eq = LinRel::mk_eq(LinExpr::new(vec![1, 0, 0]).unwrap());
+        let contradiction_eq = eq!(1, 0, 0);
         assert!(contradiction_eq.is_trivial_contradiction());
 
         // Positive test: 2 <= 0 is a contradiction (inequality)
-        let contradiction_le = LinRel::mk_le(LinExpr::new(vec![2, 0, 0]).unwrap());
+        let contradiction_le = le!(2, 0, 0);
         assert!(contradiction_le.is_trivial_contradiction());
 
         // Positive test: 0.5 <= 0 is a contradiction (inequality)
         let half = Rational::from(1) / Rational::from(2);
-        let contradiction_le_half =
-            LinRel::mk_le(LinExpr::new(vec![half, Rational::from(0), Rational::from(0)]).unwrap());
+        let contradiction_le_half = le!(half, Rational::ZERO, Rational::ZERO);
         assert!(contradiction_le_half.is_trivial_contradiction());
 
         // Negative test: 0 = 0 is not a contradiction (it's trivial)
-        let trivial_eq = LinRel::mk_eq(LinExpr::new(vec![0, 0, 0]).unwrap());
+        let trivial_eq = eq!(0, 0, 0);
         assert!(!trivial_eq.is_trivial_contradiction());
 
         // Negative test: -1 <= 0 is not a contradiction (it's trivial)
-        let trivial_le = LinRel::mk_le(LinExpr::new(vec![-1, 0, 0]).unwrap());
+        let trivial_le = le!(-1, 0, 0);
         assert!(!trivial_le.is_trivial_contradiction());
 
         // Negative test: x1 = 0 is not a contradiction (has variables)
-        let non_contradiction_eq = LinRel::mk_eq(LinExpr::new(vec![0, 1, 0]).unwrap());
+        let non_contradiction_eq = eq!(0, 1, 0);
         assert!(!non_contradiction_eq.is_trivial_contradiction());
 
         // Negative test: x1 + x2 <= 0 is not a contradiction (has variables)
-        let non_contradiction_le = LinRel::mk_le(LinExpr::new(vec![0, 1, 1]).unwrap());
+        let non_contradiction_le = le!(0, 1, 1);
         assert!(!non_contradiction_le.is_trivial_contradiction());
 
         // Negative test: 0 <= 0 is not a contradiction (it's trivial)
-        let trivial_le_zero = LinRel::mk_le(LinExpr::new(vec![0, 0, 0]).unwrap());
+        let trivial_le_zero = le!(0, 0, 0);
         assert!(!trivial_le_zero.is_trivial_contradiction());
     }
 
@@ -400,7 +389,7 @@ mod tests {
     fn test_compute_bound_from() {
         // Test case 1: Upper bound from positive coefficient
         // 3x1 + 2x2 <= 0 should give x1 <= (-2x2)/3
-        let le1 = LinRel::mk_le(LinExpr::new(vec![0, 3, 2]).unwrap());
+        let le1 = le!(0, 3, 2);
         let bound1 = le1.compute_bound_from(1).unwrap();
         assert_eq!(bound1.i, 1);
         assert!(matches!(bound1.bound, Bound::Upper));
@@ -411,7 +400,7 @@ mod tests {
 
         // Test case 2: Lower bound from negative coefficient
         // -3x1 + 2x2 <= 0 should give 2x2/3 <= x1
-        let le2 = LinRel::mk_le(LinExpr::new(vec![0, -3, 2]).unwrap());
+        let le2 = le!(0, -3, 2);
         let bound2 = le2.compute_bound_from(1).unwrap();
         assert_eq!(bound2.i, 1);
         assert!(matches!(bound2.bound, Bound::Lower));
@@ -422,7 +411,7 @@ mod tests {
 
         // Test case 3: With constant term
         // 5 + 2x1 - 3x2 <= 0 should give x1 <= (3x2 - 5)/2
-        let le3 = LinRel::mk_le(LinExpr::new(vec![5, 2, -3]).unwrap());
+        let le3 = le!(5, 2, -3);
         let bound3 = le3.compute_bound_from(1).unwrap();
         assert_eq!(bound3.i, 1);
         assert!(matches!(bound3.bound, Bound::Upper));
@@ -433,12 +422,12 @@ mod tests {
         assert_eq!(bound3.expr.coeff(2).unwrap(), &expected_coeff3);
 
         // Test case 4: Zero coefficient should return None
-        let le4 = LinRel::mk_le(LinExpr::new(vec![0, 0, 2]).unwrap());
+        let le4 = le!(0, 0, 2);
         let bound4 = le4.compute_bound_from(1);
         assert!(bound4.is_none());
 
         // Test case 5: Out of bounds should return None
-        let le5 = LinRel::mk_le(LinExpr::new(vec![0, 1, 2]).unwrap());
+        let le5 = le!(0, 1, 2);
         let bound5 = le5.compute_bound_from(3);
         assert!(bound5.is_none());
     }
