@@ -238,6 +238,25 @@ impl LinExpr {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum Bound {
+    /// An upper bound: x_i <= b + sum_j b_j x_j
+    Upper,
+    /// A lower bound: b + sum_j b_j x_j <= x_i
+    Lower,
+}
+
+/// Represents a variable bound by a linear expression
+#[derive(Debug, Clone)]
+pub struct LinExprBound {
+    /// Index of the variable being bound
+    pub i: usize,
+    /// Type of bound
+    pub bound: Bound,
+    /// bounding expression
+    pub expr: LinExpr,
+}
+
 #[cfg(test)]
 mod test_expr_support {
     use super::*;

@@ -1,6 +1,6 @@
 //! Implemenetation of linear relations: b + \sum_{i=0}^n a_i x_i = 0 (or <= 0)
 
-use crate::lin_expr::{LinExpr, LinExprError};
+use crate::lin_expr::{Bound, LinExpr, LinExprBound, LinExprError};
 use crate::types::Rational;
 use std::fmt;
 
@@ -22,7 +22,7 @@ impl fmt::Display for Constraint {
     }
 }
 
-/// Represents `LinExpr rel 0` where `rel` can be any (in)equality
+/// Represents `LinExpr rel 0` where `rel` can be = or <= (in)equality
 ///
 /// Note that the derived equality is only structural, not mathematical equality.
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -218,6 +218,40 @@ impl LinRel {
                 Constraint::Le => self.const_() > &Rational::ZERO,
             }
     }
+
+    /// Find the first variable that is possible to eliminate by finding the first non-zero
+    /// coefficient of `self.lhs`.
+    pub fn find_variable_to_eliminate(&self) -> Option<usize> {
+        self.lhs
+            .coeffs()
+            .iter()
+            .enumerate()
+            .find(|(_i, c)| !c.is_zero())
+            .map(|(i, _c)| i)
+    }
+
+    /// Isolate variable `i` (>= 1) and return an upper or lower bound depending on the sign of its
+    /// coefficient `a_i`.
+    ///
+    /// If `a_i` = 0, or `i` is out of bounds, return None
+    pub fn compute_bound_from(&self, i: usize) -> Option<LinExprBound> {
+        let mut coeffs = vec![self.lhs.const_()];
+        coeffs.extend(self.lhs.coeffs());
+        let ai = *coeffs.get(i)?;
+        if ai.is_zero() {
+            return None;
+        }
+        let bound = if ai > &Rational::ZERO {
+            Bound::Upper
+        } else {
+            Bound::Lower
+        };
+        let mut new_coeffs: Vec<Rational> = coeffs.iter().map(|&c| -c.clone() / ai).collect();
+        new_coeffs[i] = Rational::ZERO;
+        let expr = LinExpr::new(new_coeffs)
+            .expect("unreachable because the constant makes coeffs/new_coeffs non-empty");
+        Some(LinExprBound { i, bound, expr })
+    }
 }
 
 #[cfg(test)]
@@ -360,5 +394,52 @@ mod tests {
         // Negative test: 0 <= 0 is not a contradiction (it's trivial)
         let trivial_le_zero = LinRel::mk_le(LinExpr::new(vec![0, 0, 0]).unwrap());
         assert!(!trivial_le_zero.is_trivial_contradiction());
+    }
+
+    #[test]
+    fn test_compute_bound_from() {
+        // Test case 1: Upper bound from positive coefficient
+        // 3x1 + 2x2 <= 0 should give x1 <= (-2x2)/3
+        let le1 = LinRel::mk_le(LinExpr::new(vec![0, 3, 2]).unwrap());
+        let bound1 = le1.compute_bound_from(1).unwrap();
+        assert_eq!(bound1.i, 1);
+        assert!(matches!(bound1.bound, Bound::Upper));
+        assert_eq!(bound1.expr.const_(), &Rational::ZERO);
+        assert_eq!(bound1.expr.coeff(1).unwrap(), &Rational::ZERO);
+        let expected_coeff1 = Rational::from(-2) / Rational::from(3);
+        assert_eq!(bound1.expr.coeff(2).unwrap(), &expected_coeff1);
+
+        // Test case 2: Lower bound from negative coefficient
+        // -3x1 + 2x2 <= 0 should give 2x2/3 <= x1
+        let le2 = LinRel::mk_le(LinExpr::new(vec![0, -3, 2]).unwrap());
+        let bound2 = le2.compute_bound_from(1).unwrap();
+        assert_eq!(bound2.i, 1);
+        assert!(matches!(bound2.bound, Bound::Lower));
+        assert_eq!(bound2.expr.const_(), &Rational::ZERO);
+        assert_eq!(bound2.expr.coeff(1).unwrap(), &Rational::ZERO);
+        let expected_coeff2 = Rational::from(2) / Rational::from(3);
+        assert_eq!(bound2.expr.coeff(2).unwrap(), &expected_coeff2);
+
+        // Test case 3: With constant term
+        // 5 + 2x1 - 3x2 <= 0 should give x1 <= (3x2 - 5)/2
+        let le3 = LinRel::mk_le(LinExpr::new(vec![5, 2, -3]).unwrap());
+        let bound3 = le3.compute_bound_from(1).unwrap();
+        assert_eq!(bound3.i, 1);
+        assert!(matches!(bound3.bound, Bound::Upper));
+        let expected_const3 = Rational::from(-5) / Rational::from(2);
+        assert_eq!(bound3.expr.const_(), &expected_const3);
+        assert_eq!(bound3.expr.coeff(1).unwrap(), &Rational::ZERO);
+        let expected_coeff3 = Rational::from(3) / Rational::from(2);
+        assert_eq!(bound3.expr.coeff(2).unwrap(), &expected_coeff3);
+
+        // Test case 4: Zero coefficient should return None
+        let le4 = LinRel::mk_le(LinExpr::new(vec![0, 0, 2]).unwrap());
+        let bound4 = le4.compute_bound_from(1);
+        assert!(bound4.is_none());
+
+        // Test case 5: Out of bounds should return None
+        let le5 = LinRel::mk_le(LinExpr::new(vec![0, 1, 2]).unwrap());
+        let bound5 = le5.compute_bound_from(3);
+        assert!(bound5.is_none());
     }
 }
