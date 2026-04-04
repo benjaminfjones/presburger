@@ -120,6 +120,35 @@ mod test_fme {
     }
 
     #[test]
+    fn test_solver_check_only_equalities_4eq_sat() {
+        let mut solver = FMESolver::new();
+        // system can be transformed by automorphism into one with upper triangular matrix => SAT
+        solver.assert(eq!(0, 0, 1, 7, 0));
+        solver.assert(eq!(0, 0, 0, 0, 15));
+        solver.assert(eq!(0, 0, 0, 11, 13));
+        solver.assert(eq!(0, 2, 0, 3, 5));
+        assert_eq!(solver.check(), FMEState::SAT);
+    }
+
+    #[test]
+    fn test_solver_check_only_equalities_2eq_1trivleq_sat() {
+        let mut solver = FMESolver::new();
+        solver.assert(eq!(0, 1, 1)); // x1 + x2 = 0
+        solver.assert(eq!(0, 0, 1)); // x2 = 0
+        solver.assert(le!(-1, 0, 0)); // -1 <= 0
+        assert_eq!(solver.check(), FMEState::SAT);
+    }
+
+    #[test]
+    fn test_solver_check_only_equalities_2eq_1trivleq_unsat() {
+        let mut solver = FMESolver::new();
+        solver.assert(eq!(0, 1, 1)); // x1 + x2 = 0
+        solver.assert(eq!(0, 0, 1)); // x2 = 0
+        solver.assert(le!(1, 0, 0)); // 1 <= 0 -> UNSAT
+        assert_eq!(solver.check(), FMEState::UNSAT);
+    }
+
+    #[test]
     fn test_solver_check_only_equalities_2eq_unsat() {
         let mut solver = FMESolver::new();
         solver.assert(eq!(1, 1)); // 1 + x1 = 0
