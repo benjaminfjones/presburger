@@ -238,7 +238,7 @@ impl LinExpr {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Bound {
     /// An upper bound: x_i <= b + sum_j b_j x_j
     Upper,
@@ -247,7 +247,7 @@ pub enum Bound {
 }
 
 /// Represents a variable bound by a linear expression
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LinExprBound {
     /// Index of the variable being bound
     pub i: usize,
