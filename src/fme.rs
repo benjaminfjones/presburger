@@ -241,7 +241,7 @@ mod test_fme {
     // 3/4 - z <= 0
     // -1 + x <= 0
     #[test]
-    fn test_solver_check_dec_proc_1() {
+    fn test_solver_check_dec_proc_1_sat() {
         let mut solver = FMESolver::new();
         solver.assert(le!(0, -1, 0, 0));
         solver.assert(le!(-1, 1, 0, 0));
@@ -250,5 +250,16 @@ mod test_fme {
         solver.assert(le!(rbig!(3 / 4), rbig!(0), rbig!(0), rbig!(1)));
         solver.assert(le!(-1, 0, 0, 1));
         assert_eq!(solver.check(), FMEState::SAT);
+    }
+
+    // Test from Decision Procedures, 2nd ed.
+    #[test]
+    fn test_solver_check_dec_proc_2_unsat() {
+        let mut solver = FMESolver::new();
+        solver.assert(le!(0, 1, -1, 0));
+        solver.assert(le!(0, 1, 0, -1));
+        solver.assert(le!(0, -1, 1, 2));
+        solver.assert(le!(1, 0, 0, -1));
+        assert_eq!(solver.check(), FMEState::UNSAT);
     }
 }
