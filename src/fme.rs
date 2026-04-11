@@ -76,9 +76,7 @@ impl FMESolver {
             let relations = self.system.relations();
             let mut computed_bounds: Vec<LinExprBound> = relations
                 .iter()
-                .map(|r| r.compute_bound_from(i))
-                .filter(|cb| cb.is_some())
-                .map(|cb| cb.unwrap())
+                .filter_map(|r| r.compute_bound_from(i))
                 .collect();
             let split_index = partition(&mut computed_bounds, |b| b.bound == Bound::Lower);
             // computed_bounds = [lower1, ... lowerN, upper1, ... upperM]
@@ -111,6 +109,12 @@ impl FMESolver {
                 }
             }
         } // end of FME loop
+    }
+}
+
+impl Default for FMESolver {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
