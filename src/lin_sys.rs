@@ -38,6 +38,11 @@ impl LinSys {
     }
 
     /// Get a reference to the relations vector
+    pub fn num_relations(&self) -> usize {
+        self.relations.len()
+    }
+
+    /// Get a reference to the relations vector
     pub fn relations(&self) -> &[LinRel] {
         &self.relations
     }
@@ -98,7 +103,7 @@ impl LinSys {
     }
 
     /// Filter out trivial constant (in)equalities from the system. See `LinRel::is_trivial().`
-    pub fn eliminate_trivial_eqs(&mut self) {
+    pub fn eliminate_trivial_relations(&mut self) {
         loop {
             let next = self.relations.iter().position(|r| r.is_trivial());
             match next {
@@ -116,6 +121,18 @@ impl LinSys {
     /// 2 <= 0.
     pub fn has_trivial_contradiction(&self) -> bool {
         self.relations.iter().any(|r| r.is_trivial_contradiction())
+    }
+
+    /// Find an inequality having a variable with non-zero coefficient; we call this "isolatable".
+    /// Return the index of the variable that can be isolated.
+    pub fn find_isolatable_variable_in_le(&self) -> Option<usize> {
+        for r in self.relations.iter() {
+            let maybe_j = r.is_isolatable_le();
+            if maybe_j.is_some() {
+                return maybe_j;
+            };
+        }
+        None
     }
 }
 
@@ -274,7 +291,7 @@ mod tests {
         assert_eq!(system.len(), 2);
         assert!(!system.has_trivial_contradiction());
 
-        system.eliminate_trivial_eqs();
+        system.eliminate_trivial_relations();
 
         assert_eq!(system.len(), 1);
 
@@ -299,7 +316,7 @@ mod tests {
 
         assert_eq!(system.len(), 4);
 
-        system.eliminate_trivial_eqs();
+        system.eliminate_trivial_relations();
 
         assert_eq!(system.len(), 2);
 

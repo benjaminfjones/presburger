@@ -193,7 +193,7 @@ impl LinExpr {
         }
     }
 
-    /// Set the coefficient a_i
+    /// Set the coefficient a_i, i > 0 is not checked
     pub fn set_coeff_unchecked(&mut self, i: usize, value: Rational) {
         self.coeff[i] = value;
     }

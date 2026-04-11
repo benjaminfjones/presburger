@@ -52,6 +52,19 @@ impl LinRel {
         }
     }
 
+    /// Create a normalized expr <= 0 relation from a non-normalized one: lhs <= rhs
+    pub fn le_from_lhs_rhs(lhs: &LinExpr, rhs: &LinExpr) -> Self {
+        let n = lhs.nvars();
+        debug_assert!(n == rhs.nvars());
+        let mut expr = LinExpr::new_zeros(n);
+        expr.set_const(lhs.const_() - rhs.const_());
+        for i in 1..=n {
+            expr.set_coeff(i, lhs.coeff_unchecked(i) - rhs.coeff_unchecked(i))
+                .unwrap();
+        }
+        Self::mk_le(expr)
+    }
+
     pub fn nvars(&self) -> usize {
         self.lhs.nvars()
     }
@@ -72,7 +85,7 @@ impl LinRel {
         matches!(self.constraint, Constraint::Eq)
     }
 
-    /// An equality is a possible substitution iff. some coeff == +-1.
+    /// An equality is a possible substitution iff. some coeff is non-zero.
     /// Return the position of the first substitution coefficient, or None.
     ///
     /// # Examples
@@ -197,6 +210,21 @@ impl LinRel {
         })
     }
 
+    /// Determine if an inequality has a variable that can be isolated; return the index of that
+    /// variable or None if none exists.
+    ///
+    /// TODO: lin_rel::is_isolatable_le: refactor to share code with `is_subs`
+    pub fn is_isolatable_le(&self) -> Option<usize> {
+        if self.constraint != Constraint::Le {
+            return None;
+        }
+        self.lhs
+            .coeffs()
+            .iter()
+            .position(|c| !c.is_zero())
+            .map(|i| i + 1)
+    }
+
     /// Determine if `self` is a trivially true (in)equality between constants,
     /// e.g. 0 = 0, or -1 <= 0
     pub fn is_trivial(&self) -> bool {
@@ -230,11 +258,14 @@ impl LinRel {
             .map(|(i, _c)| i)
     }
 
-    /// Isolate variable `i` (>= 1) and return an upper or lower bound depending on the sign of its
+    /// Isolate variable `i` (> 0) and return an upper or lower bound depending on the sign of its
     /// coefficient `a_i`.
     ///
     /// If `a_i` = 0, or `i` is out of bounds, return None
+    ///
+    /// Example: `1 + x1 + 3x2 <= 0` with `i = 1` results in `x1 <= -1 + (-3)x2`, an Upper bound
     pub fn compute_bound_from(&self, i: usize) -> Option<LinExprBound> {
+        debug_assert!(i > 0);
         let mut coeffs = vec![self.lhs.const_()];
         coeffs.extend(self.lhs.coeffs());
         let ai = *coeffs.get(i)?;

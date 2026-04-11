@@ -1,6 +1,9 @@
 //! Implementation of Fourier-Motzkin Elimination
 //! <https://en.wikipedia.org/wiki/Fourier%E2%80%93Motzkin_elimination>
 
+use itertools::partition;
+
+use crate::lin_expr::{Bound, LinExprBound};
 use crate::{lin_rel::LinRel, lin_sys::LinSys};
 
 /// FME Solver State
@@ -42,23 +45,61 @@ impl FMESolver {
 
     /// Check satisfiablility in the current state
     pub fn check(&mut self) -> FMEState {
+        // reduce system to inequalities and constant equalities
+        self.system.eliminate_nontrivial_eqs();
+
         loop {
-            // reduce system to inequalities and constant equalities
-            self.system.eliminate_nontrivial_eqs();
-            // remove the trivial equalities
-            self.system.eliminate_trivial_eqs();
-            // check there are no contradictory (in)equalities
-            if self.system.has_trivial_contradiction() {
-                return FMEState::UNSAT;
-            }
+            println!(
+                "{} le relations at start of loop",
+                self.system.num_relations()
+            );
+            // remove the trivial relations
+            self.system.eliminate_trivial_relations();
+
+            println!(
+                "{} le relations after removing trivial ones",
+                self.system.num_relations()
+            );
             // If after equality removal there were only trivially SAT equalities then
             // the original system is SAT.
             if self.system.relations().is_empty() {
                 return FMEState::SAT;
             }
-            break;
-        }
-        todo!()
+            // check there are no contradictory (in)equalities
+            if self.system.has_trivial_contradiction() {
+                return FMEState::UNSAT;
+            }
+
+            // At this point, there is guaranteed to be at least one non-constant inequality
+            let i = self.system.find_isolatable_variable_in_le().unwrap();
+            println!("isolating variable {i}");
+            let relations = self.system.relations();
+            let mut computed_bounds: Vec<LinExprBound> = relations
+                .iter()
+                .map(|r| r.compute_bound_from(i))
+                .filter(|cb| cb.is_some())
+                .map(|cb| cb.unwrap())
+                .collect();
+            let split_index = partition(&mut computed_bounds, |b| b.bound == Bound::Lower);
+            // computed_bounds = [lower1, ... lowerN, upper1, ... upperM]
+            //                                      ^-- split_index
+            println!(
+                "{} lower bounds and {} upper bounds",
+                split_index,
+                computed_bounds.len() - split_index
+            );
+
+            // Form all pairs of <= relations: lower_bound_expr <= upper_bound_expr
+            self.system.clear();
+            for i in 0..split_index {
+                for j in split_index..computed_bounds.len() {
+                    self.system.add_relation(LinRel::le_from_lhs_rhs(
+                        &computed_bounds[i].expr,
+                        &computed_bounds[j].expr,
+                    ));
+                }
+            }
+        } // end of FME loop
     }
 }
 
@@ -84,7 +125,7 @@ mod test_fme {
         // reduce system to inequalities and constant equalities
         sys.eliminate_nontrivial_eqs();
         // remove the trivial equalities
-        sys.eliminate_trivial_eqs();
+        sys.eliminate_trivial_relations();
         // check there are no contradictory (in)equalities
         assert!(!sys.has_trivial_contradiction());
 
@@ -154,5 +195,28 @@ mod test_fme {
         solver.assert(eq!(1, 1)); // 1 + x1 = 0
         solver.assert(eq!(2, 1)); // 2 + x1 = 0
         assert_eq!(solver.check(), FMEState::UNSAT);
+    }
+
+    #[test]
+    fn test_solver_check_one_le() {
+        let mut solver = FMESolver::new();
+        solver.assert(eq!(1, 1, 1)); // 1  + x1 + x2 = 0
+        solver.assert(le!(1, 1, 0)); // 1  + x1 <= 0
+        // x1 = -1 -x2
+        // ==> 1 + -1 - x2 <= 0 => 0 <= x2 unbounded
+        // In this case after the first round there are only upper bounds, no lower bounds
+        // thus the system has an empty set of relations => SAT
+        assert_eq!(solver.check(), FMEState::SAT);
+    }
+
+    // Test from https://en.wikipedia.org/wiki/Fourier%E2%80%93Motzkin_elimination
+    #[test]
+    fn test_solver_check_four_le_wikipedia() {
+        let mut solver = FMESolver::new();
+        solver.assert(le!(-10, 2, -5, 4));
+        solver.assert(le!(-9, 3, -6, 3));
+        solver.assert(le!(7, -1, 5, -2));
+        solver.assert(le!(-12, -3, 2, 6));
+        assert_eq!(solver.check(), FMEState::SAT);
     }
 }
