@@ -89,8 +89,19 @@ impl FMESolver {
                 computed_bounds.len() - split_index
             );
 
+            // Remove all relations from the system that have non-zero a_i;
+            // these are replaced by the lower,upper bound pairs below
+            let mut to_remove = Vec::new();
+            for (j, r) in self.system.relations().iter().enumerate() {
+                if r.lhs().supported(i) {
+                    to_remove.push(j);
+                }
+            }
+            for j in to_remove {
+                self.system.remove_relation(j);
+            }
+
             // Form all pairs of <= relations: lower_bound_expr <= upper_bound_expr
-            self.system.clear();
             for i in 0..split_index {
                 for j in split_index..computed_bounds.len() {
                     self.system.add_relation(LinRel::le_from_lhs_rhs(
@@ -211,12 +222,33 @@ mod test_fme {
 
     // Test from https://en.wikipedia.org/wiki/Fourier%E2%80%93Motzkin_elimination
     #[test]
-    fn test_solver_check_four_le_wikipedia() {
+    fn test_solver_check_wikipedia() {
         let mut solver = FMESolver::new();
         solver.assert(le!(-10, 2, -5, 4));
         solver.assert(le!(-9, 3, -6, 3));
         solver.assert(le!(7, -1, 5, -2));
         solver.assert(le!(-12, -3, 2, 6));
+        assert_eq!(solver.check(), FMEState::SAT);
+    }
+
+    // Test from Decision Procedures, 2nd ed.
+    // 0 ≤ x ≤ 1, 0 ≤ y ≤ 1, 3/4 <= z <= 1
+    // ----
+    // -x <= 0
+    // -1 + x <= 0
+    // -y <= 0
+    // -1 + y <= 0
+    // 3/4 - z <= 0
+    // -1 + x <= 0
+    #[test]
+    fn test_solver_check_dec_proc_1() {
+        let mut solver = FMESolver::new();
+        solver.assert(le!(0, -1, 0, 0));
+        solver.assert(le!(-1, 1, 0, 0));
+        solver.assert(le!(0, 0, -1, 0));
+        solver.assert(le!(-1, 0, 1, 0));
+        solver.assert(le!(rbig!(3 / 4), rbig!(0), rbig!(0), rbig!(1)));
+        solver.assert(le!(-1, 0, 0, 1));
         assert_eq!(solver.check(), FMEState::SAT);
     }
 }
