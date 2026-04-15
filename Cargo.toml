@@ -7,9 +7,10 @@ edition = "2024"
 [dependencies]
 lalrpop = "^0.22"
 lalrpop-util = "^0.22"
-proptest = "^1.6"
+proptest = "^1.11"
 dashu = "0.4.2"
 itertools = "0.14.0"
+rand = "0.9.4"
 
 [build-dependencies]
 lalrpop = "^0.22"
