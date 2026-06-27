@@ -21,6 +21,7 @@ common set of benchmark problems.
 
 ## Progress
 
+  * 2026-04-11 -- Finished Fourier-Motzkin Elimination solver (see test suite)
   * 2022-03-10 -- Work in progress on a specific Fourier-Motzkin Elimination
     (FME) implementation. Current plan is tracked in `PLAN.md`.
   * 2020-07-26 -- Ironed out and tested (proptest) `to_nnf` for AST formulas,
